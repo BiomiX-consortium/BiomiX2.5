@@ -12,7 +12,7 @@ if (file.exists("Package_Windows.tar") == TRUE){
 }else{
         path<- paste(getwd(),"/", "Package_Windows.tar", sep="")
         options(timeout=6000)
-        download.file("https://github.com/IxI-97/BiomiX/releases/download/v2.4/Package_Windows.tar.gz", destfile = path, mode = "wb")
+        download.file("https://github.com/BiomiX-consortium/BiomiX2.5/releases/download/V2.5.1/Package_Windows.tar", destfile = path, mode = "wb")
         untar("Package_Windows.tar")
 }
 
