@@ -1,0 +1,6 @@
+	0
+Integration_type	MOFA_INTEGRATION
+Data_Integration	YES
+Number_of_factors_to_calculate	5
+Factor_to_explore	1
+Omics_overlay	0

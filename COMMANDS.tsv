@@ -1,0 +1,7 @@
+	INDEX	ANALYSIS	DATA_TYPE	INTEGRATION	LABEL	SELECTION	DIRECTORIES	PREVIEW
+0	input1	YES	Transcriptomics	YES	RNA	NO	C:/Users/crist/Desktop/BiomiX2.5/Transcriptomics/INPUT/EGAS00001001746_transcriptomics.tsv	NO
+1	input2	YES	Methylomics	YES	METHY	NO	C:/Users/crist/Desktop/BiomiX2.5/Methylomics/INPUT/EGAS00001001746_methylomics.tsv	NO
+2	input3	NO	Undefined	NO		NO	X	NO
+3	input4	NO	Undefined	NO		NO	X	NO
+4	input5	NO	Undefined	NO		NO	X	NO
+5	input6	NO	Undefined	NO		NO	X	NO
