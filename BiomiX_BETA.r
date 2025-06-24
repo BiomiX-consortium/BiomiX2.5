@@ -120,7 +120,7 @@ if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
         directory2 <- paste(directory,"/Transcriptomics/INPUT",sep="")
         #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
         #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-        # source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
+        source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
         cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
         gc()
 
@@ -205,7 +205,7 @@ for (i in position){
         directory2 <- paste(directory,"/Transcriptomics/INPUT_PRECISESADS",sep="")
         files <- grep("MATRIX*",list.files(directory2),value=TRUE)
         files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-        # source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
+        source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
         cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
         gc()
         
