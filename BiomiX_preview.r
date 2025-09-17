@@ -53,6 +53,7 @@ get_default_browser <- function() {
 # Function to get the top N most variable features
 get_top_variable_genes <- function(data, top_n = 500) {
         # Compute variance of each feature
+        
         feature_variances <- apply(data, 2, var)
         
         # Get indices of top N most variable genes

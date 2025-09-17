@@ -5,16 +5,16 @@
 # Main analysis pipeline using modular BiomiX functions
 
 # =======================
-# User Parameters (Edit)
+# User Parameters Manual load (Debugging)
 # =======================
-# 
+#
 # library(vroom)
 # args = as.list(c("Neutrophils","PAPS"))
 # args[1] <-"SJS"
 # args[2] <-"CTRL"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 # 
-# directory <- args[3]
+# directory <- args[[3]]
 # iterations = 1
 # selection_samples = "NO"
 # Cell_type = "PLASMA"
@@ -27,172 +27,6 @@
 # =======================
 # Load Functions & Setup
 # =======================
-# directory2 <- paste(directory,"/Metabolomics",sep="")
-# setwd(directory2)
-# 
-# source("BiomiX_DMA_function.r")
-# load_libraries()
-# 
-# # =======================
-# # Load Metadata & Matrix
-# # =======================
-# directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
-# setwd(directory2)
-# 
-# COMMAND <- vroom(file.path(directory, "COMMANDS.tsv"), delim = "\t")
-# COMMAND_ADV <- vroom(file.path(directory, "COMMANDS_ADVANCED.tsv"), delim = "\t")
-# COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-# Heatmap_genes <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_CLUSTERING_OPTIONS[3])
-# 
-# LogFC <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[1])
-# padju <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[2])
-# 
-# annotation_mode = COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[1]
-# 
-# matrix_raw <- load_matrix(COMMAND$DIRECTORIES[i])
-# metadata_file <- readLines(file.path(directory, "directory.txt"))
-# metadata_raw <- load_metadata(metadata_file)
-# 
-# # ==============================
-# # Prepare Matrix Format
-# # ==============================
-# matrix <- prepare_matrix(matrix_raw)
-# 
-# # ==============================
-# # Match Metadata with Matrix
-# # ==============================
-# metadata <- metadata_raw %>%
-#         filter(CONDITION %in% c(args[[1]], args[[2]], "QC")) %>%
-#         arrange(ID)
-# matrix<- matrix[matrix$ID %in% metadata$ID,]
-# matrix <- matrix[order(matrix$ID),] 
-# metadata<- metadata[metadata$ID %in% matrix$ID,]
-# metadata <- metadata[order(metadata$ID),] 
-# 
-# # Ensure IDs match
-# stopifnot(all(metadata$ID == matrix$ID))
-# 
-# # ==============================
-# # Apply Advanced Metadata Filters
-# # ==============================
-# meta_filters <- grep("FILTERING", colnames(COMMAND_ADV))
-# filtered <- apply_metadata_filters(metadata, matrix, meta_filters, COMMAND_ADV)
-# metadata <- filtered$metadata
-# matrix <- filtered$matrix
-# colnames(matrix) <-make.unique(colnames(matrix))
-# metabolite_name <-rownames(matrix)
-# matrix[,-1]<- apply(as.data.frame(matrix[,-1]), 2,as.numeric)
-# rownames(matrix) = NULL
-# 
-# # ==============================
-# # Quality Control (Shiny Preview)
-# # ==============================
-# if (COMMAND$PREVIEW[i] == "YES") {
-#         browser_path <- readLines(file.path(directory, "_INSTALL/CHOISE_BROWSER_pre-view"), n = 1)
-#         matrix_tmp <- matrix %>% remove_rownames %>% column_to_rownames("ID")
-#         metadata <- as.data.frame(metadata)
-#         run_qc_preview(matrix_tmp, metadata, directory, browser_path)
-#         matrix <- matrix %>% filter(ID %in% metadata$ID)
-# }
-# 
-# # ==============================
-# # Subset Data by Condition
-# # ==============================
-# matrix_data <- matrix %>% column_to_rownames("ID")
-# meta_ordered <- metadata %>% arrange(ID)
-# rownames(matrix_data) <- meta_ordered$ID
-# 
-# ctrl_samples <- meta_ordered$CONDITION == args[[2]]
-# treat_samples <- meta_ordered$CONDITION == args[[1]]
-# control <- matrix_data[ctrl_samples, , drop = FALSE]
-# treated <- matrix_data[treat_samples, , drop = FALSE]
-# 
-# # ==============================
-# # Run Statistical Tests
-# # ==============================
-# shapiro_ctrl <- shapiro_results(control)
-# shapiro_treat <- shapiro_results(treated)
-# results <- wilcoxon_fc(control, treated)
-# results <- results %>% mutate(NAME = colnames(control))
-# 
-# # ==============================
-# # Adjust P-values and Classify
-# # ==============================
-# padj_thresh <- as.numeric(COMMAND_ADV$ADVANCED_OPTION_METABOLOMICS[2])
-# logfc_thresh <- as.numeric(COMMAND_ADV$ADVANCED_OPTION_METABOLOMICS[1])
-# final_results <- process_differential_results(results, padj_thresh, logfc_thresh)
-# 
-# # ==============================
-# # Handle Annotations (MS1, MS2, Annotated)
-# # ==============================
-# if (annotation_mode == "MS1") {
-#         annotation_file <- COMMAND_ADV$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES[i]
-#         if (file.exists(annotation_file)) {
-#                 annotation <- load_annotation_file(annotation_file)
-#                 annotation <- process_annotation_rt(annotation)
-#                 final_results <- left_join(final_results, annotation, by = c("NAME" = "name"))
-#         }
-# } else if (annotation_mode == "MS2") {
-#         ms2_input_dir <- COMMAND_ADV$ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY[1]
-#         annot_subset <- final_results %>%
-#                 select(NAME) %>%
-#                 rename(name = NAME) %>%
-#                 mutate(mz = NA, rt = NA)  # Placeholder values if not present
-#         
-#         temp_file <- file.path(ms2_input_dir, "TEMP.csv")
-#         write_csv(annot_subset, temp_file)
-#         
-#         ms2_files <- list.files(ms2_input_dir, pattern = paste0("MS2_", COMMAND$LABEL[i]), full.names = TRUE)
-#         params <- list()  # Normally this would be populated with loaded .rda databases
-#         
-#         annotate_result <- run_ms2_annotation(temp_file, ms2_files, MS2_databases, params, ms2_input_dir)
-#         summary <- extract_annotation_summary(annotate_result)
-#         final_results <- left_join(final_results, summary, by = c("NAME" = "MS1.peak.name"))
-# }
-# 
-# # ==============================
-# # Save Results
-# # ==============================
-# outdir <- file.path(directory, "Metabolomics/OUTPUT", paste0(Cell_type, "_", args[[1]], "_vs_", args[[2]]))
-# create_safe_dir(outdir)
-# write_tsv(final_results, file.path(outdir, paste0(Cell_type, "_", args[[1]], "_vs_", args[[2]], "_results.tsv")))
-# 
-# # ==============================
-# # Create Volcano Plot & Heatmap
-# # ==============================
-# plot_volcano(final_results, args[[1]], args[[2]], Cell_type, outdir)
-# 
-# selected_peaks <- final_results %>% filter(regulation != "NS") %>% arrange(padj) %>% pull(NAME)
-# if (length(selected_peaks) >= 2) {
-#         plot_heatmap(matrix, metadata, selected_peaks, outdir)
-# }
-# 
-# # ==============================
-# # (Optional) Pathway Enrichment
-# # ==============================
-# if (stat_flag) {
-#         enrichment_dir <- file.path(outdir, "Pathway_Analysis")
-#         if (COMMAND_ADV[2, 9] == "HMDB") {
-#                 colnames(final_results)[1] <- "HMDB"
-#                 result <- run_hmdb_enrichment(final_results$HMDB, hmdb_pathway, threads = 4)
-#                 save_pathway_results(result, enrichment_dir, "HMDB")
-#         } else if (COMMAND_ADV[2, 9] == "KEGG") {
-#                 colnames(final_results)[1] <- "KEGG"
-#                 result <- run_kegg_enrichment(final_results$KEGG, kegg_hsa_pathway, threads = 4)
-#                 save_pathway_results(result, enrichment_dir, "KEGG")
-#         }
-# }
-# 
-# message("BiomiX analysis complete.")
-# 
-
-
-
-
-
-
-
-
 
 library(vroom)
 library(dplyr)
@@ -203,55 +37,39 @@ library(tibble)
 library(readxl)
 
 
-# MANUAL INPUT
-# # # #
-# library(vroom)
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"PTB"
-# args[2] <-"HC"
-# args[3] <-"/home/cristia/BiomiX2.4"
-# 
-# directory <- args[3]
-# iterations = 1
-# selection_samples = "NO"
-# Cell_type = "METAB"
-# i = 1
-# ANNOTATION = "annotated"
-# DIR_METADATA <- readLines("/home/cristia/BiomiX2.4/directory.txt")
-# STATISTICS = "YES"
+setwd(directory)
 
 
-# library(vroom)
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"cachexic"
-# args[2] <-"control"
-# args[3] <-"/home/cristia/Scrivania/BiomiX2.1"
-# #
-# directory <- args[3]
-# iterations = 1
-# selection_samples = "NO"
-# Cell_type = "CACHEXIA"
-# i = 1
-# ANNOTATION = "Annotated"
 
-# DIR_METADATA <- readLines("/home/cristia/Scrivania/BiomiX2.1/directory.txt")
-# matrix <-vroom("/home/henry/Desktop/BiomiX2.0/Metabolomics/INPUT/ORIGINAL/PLASMA_STRD.tsv" , delim = "\t", col_names = TRUE)
-# matrix <-vroom("/home/cristia/Scrivania/BiomiX1.9/Metabolomics/INPUT/PLASMA_SLE.tsv" , delim = "\t", col_names = TRUE)
-# Metadata_total <- vroom("/home/cristia/Scrivania/BiomiX1.9/Metadata/Metadata_PRECISESADS.tsv", delim = "\t", col_names = TRUE)
-# annotation <- vroom("/home/cristia/Scrivania/BiomiX1.9/Metabolomics/INPUT/ANNOTATION_PLASMA_SLE.tsv",delim="\t",col_names = TRUE)
-
-#AVAILABLE MS2 DATASET.
-MS2_databases = c("HMDB","MONA","MASSBANK")  
-
-COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
+#LOADING ARGUMENTS AND VARIABLES REQUIRED IN THE CODE
 
 
-COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
+library(jsonlite)
+library(tidyverse)
+combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+
+
+COMMAND <- combined_json[["COMMANDS"]]
+COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
+DIR_METADATA <- combined_json[["DIRECTORY_INFO"]][["METADATA_DIR"]]
+DIR_METADATA_output <- combined_json[["DIRECTORY_INFO"]][["OUTPUT_DIR"]]
 Heatmap_genes <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_CLUSTERING_OPTIONS[3])
-
 LogFC <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[1])
 padju <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[2])
+MS2_databases = c("HMDB","MONA","MASSBANK")  
+
+
+directory2 <- paste(directory,"/Metabolomics/",sep="")
+setwd(directory2)
+source("BiomiX_DMA_functions.r")
+
+
+
+
+
+
+
 
 #ORDER THE MS2_DATABASES PRIORITY BASED ON THE USER INDICATION IN THE ADVANCED OPTIONS.
 Input_ms2<- COMMAND_ADVANCED[3,8]
@@ -270,7 +88,10 @@ setwd(directory2)
 print(i)
 print(COMMAND$LABEL[i])
 
-#LOADING ANNOTATION AND PEAKS MATRIX
+
+
+
+### LOADING ANNOTATION AND PEAKS MATRIX
 if (grepl("\\.xlsx$|\\.xls$", COMMAND$DIRECTORIES[i])) {
         matrix <- read_excel(COMMAND$DIRECTORIES[i])
         print("Matrix Excel File read successfully!")
@@ -284,54 +105,26 @@ matrix <- t(matrix[,-1])
 matrix <- add_column(as.data.frame(matrix), sam[-1], .after = 0) 
 colnames(matrix) <-c("ID",pea)
 
+
+
+#LOAD METADATA
+
+if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
+  Metadata_total <- read_excel(DIR_METADATA)
+  print("Metadata Excel File read successfully!")
+}else{
+  Metadata_total <- vroom(DIR_METADATA, delim = "\t", col_names = TRUE)}
+
+
+
+
+
+### UPLOAD ANNOTATION IF THE USER SELECTED THE MS1 OR MS2 ANNOTATION
 ANNOTATION = COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[1]
 
-#IF STATEMENT TO UPLOAD ANNOTATION, 
-#THE REQUIREMENTS CHANGE IF THE USER SELECTED THE MS1 OR MS2 ANNOTATION
-if(ANNOTATION == "MS1"){  
-        input_ms1<-which(substr(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX,1,1) %in% i)
-        if (length(input_ms1) != 0){
-                if (file.exists(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES[input_ms1])){
-                        
-                        if (grepl("\\.xlsx$|\\.xls$", COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES[input_ms1])) {
-                                annotation <- read_excel(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES[input_ms1])
-                                print("Annotation ms1 Excel File read successfully!")
-                        }else{
-                                annotation <- vroom(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES[input_ms1],delim="\t",col_names = TRUE)}
-                        if (ncol(annotation) == 3){
-                                if (colnames(annotation)[3] == "RT_sec"){
-                                        annotation$RT_min <- as.numeric(annotation$RT_sec)/60
-                                }
-                                if (colnames(annotation)[3] == "RT_min"){
-                                        annotation$RT_sec <- as.numeric(annotation$RT_min)*60
-                                }
-                                
-                        } 
-                }
-        }}
+load_annotation(ANNOTATION, i, COMMAND_ADVANCED)
 
 
-if(ANNOTATION == "MS2"){  
-        input_ms1<-which(substr(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX,1,1) %in% i)
-        if (length(input_ms1) != 0){
-                if (file.exists(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1])){
-                        if (grepl("\\.xlsx$|\\.xls$", COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1])) {
-                                annotation <- read_excel(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1])
-                                print("Annotation ms1 Excel File read successfully!")
-                        }else{
-                                annotation <- vroom(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1],delim="\t",col_names = TRUE)}
-                        
-                        if (ncol(annotation) == 3){
-                                if (colnames(annotation)[3] == "RT_sec"){
-                                        annotation$RT_min <- as.numeric(annotation$RT_sec)/60 #as.numeric source of bug?
-                                }
-                                if (colnames(annotation)[3] == "RT_min"){
-                                        annotation$RT_sec <- as.numeric(annotation$RT_min)*60
-                                }
-                                
-                        } 
-                }
-        }}
 
 #create directory
 dir.create(path = paste(directory,"/Integration/INPUT/", "Metabolomics_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
@@ -339,172 +132,56 @@ directory2 <- paste(directory, "/Integration/INPUT/", "Metabolomics_", Cell_type
 
 setwd(directory2)
 
-#ANNOTATION <- "Annotated"
+
+### HMDB METABOLITE FILTERING  
 #UPLOAD PLASMA, URINE OR OTHERS ANNOTATIONS FROM HMDB AND FILTERING 
 #IT WORKS IF THE LABEL IS NAMES AS THE TISSUES/SAMPLE WHERE THE DATABASE IS AVAILABLE 
 
-if (str_detect(COMMAND$LABEL[i], fixed("Serum", ignore_case=TRUE))| str_detect(COMMAND$LABEL[i], fixed("Plasma", ignore_case=TRUE))){
-        if (file.exists("serum_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                serum_metabolite <- vroom(paste(directory2,"serum_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                serum_metabolite <- vroom(url("https://hmdb.ca/metabolites.csv?action=index&blood=1&c=hmdb_id&controller=metabolites&d=up&detected=1&expected=1&filter=true&predicted=1&quantified=1&utf8=%E2%9C%93"),delim=",",col_names = TRUE )
-                serum_metabolite <- as.data.frame(serum_metabolite)
-                write.table(serum_metabolite,paste(directory2,"serum_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
 
-if (str_detect(COMMAND$LABEL[i], fixed("Urine", ignore_case=TRUE))){
-        if (file.exists("urine_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                urine_metabolite <- vroom(paste(directory2,"urine_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                urine_metabolite <- vroom(url("https://hmdb.ca/metabolites.csv?action=index&c=hmdb_id&controller=metabolites&d=up&detected=1&expected=1&filter=true&predicted=1&quantified=1&urine=1&utf8=%E2%9C%93"),delim=",",col_names = TRUE )
-                urine_metabolite <- as.data.frame(urine_metabolite)
-                write.table(urine_metabolite,paste(directory2,"urine_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }
-}
+# Example calls (equivalent to your original code)
+load_biofluid_metabolites(COMMAND$LABEL[i], "Plasma", "serum_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites.csv?action=index&blood=1&c=hmdb_id&controller=metabolites&d=up&detected=1&expected=1&filter=true&predicted=1&quantified=1&utf8=%E2%9C%93",
+                          "serum_metabolite", directory2)
 
-if (str_detect(COMMAND$LABEL[i], fixed("Saliva", ignore_case=TRUE))){
-        if (file.exists("saliva_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                saliva_metabolite <- vroom(paste(directory2,"saliva_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                saliva_metabolite <- vroom(url("https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&saliva=1&filter=true"),delim=",",col_names = TRUE )
-                saliva_metabolite <- as.data.frame(saliva_metabolite)
-                write.table(saliva_metabolite,paste(directory2,"saliva_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
+load_biofluid_metabolites(COMMAND$LABEL[i], "Urine", "urine_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites.csv?action=index&c=hmdb_id&controller=metabolites&d=up&detected=1&expected=1&filter=true&predicted=1&quantified=1&urine=1&utf8=%E2%9C%93",
+                          "urine_metabolite", directory2)
 
+load_biofluid_metabolites(COMMAND$LABEL[i], "Saliva", "saliva_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&saliva=1&filter=true",
+                          "saliva_metabolite", directory2)
 
-if (str_detect(COMMAND$LABEL[i], fixed("Cerebrospinal Fluid", ignore_case=TRUE))){
-        if (file.exists("cerebrospinal_fluid_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                CSF_metabolite <- vroom(paste(directory2,"cerebrospinal_fluid_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                CSF_metabolite <- vroom(url("https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&csf=1&filter=true"),delim=",",col_names = TRUE )
-                CSF_metabolite <- as.data.frame(CSF_metabolite)
-                write.table(CSF_metabolite,paste(directory2,"cerebrospinal_fluid_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
+load_biofluid_metabolites(COMMAND$LABEL[i], "Cerebrospinal Fluid", "cerebrospinal_fluid_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&csf=1&filter=true",
+                          "CSF_metabolite", directory2)
+
+load_biofluid_metabolites(COMMAND$LABEL[i], "Feces", "feces_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&feces=1&filter=true",
+                          "feces_metabolite", directory2)
+
+load_biofluid_metabolites(COMMAND$LABEL[i], "Sweat", "sweat_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&sweat=1&filter=true",
+                          "sweat_metabolite", directory2)
+
+load_biofluid_metabolites(COMMAND$LABEL[i], "Breast milk", "breast_milk_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&breast_milk=1&filter=true",
+                          "breast_milk_metabolite", directory2)
+
+load_biofluid_metabolites(COMMAND$LABEL[i], "Bile", "bile_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&bile=1&filter=true",
+                          "bile_metabolite", directory2)
+
+load_biofluid_metabolites(COMMAND$LABEL[i], "Amniotic Fluid", "AF_metabolite_annotated.tsv",
+                          "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&amniotic_fluid=1&filter=true",
+                          "AF_metabolite", directory2)
 
 
-if (str_detect(COMMAND$LABEL[i], fixed("Feces", ignore_case=TRUE))){
-        if (file.exists("feces_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                feces_metabolite <- vroom(paste(directory2,"feces_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                feces_metabolite <- vroom(url("https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&feces=1&filter=true"),delim=",",col_names = TRUE )
-                feces_metabolite <- as.data.frame(feces_metabolite)
-                write.table(feces_metabolite,paste(directory2,"feces_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
-
-if (str_detect(COMMAND$LABEL[i], fixed("Sweat", ignore_case=TRUE))){
-        if (file.exists("sweat_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                sweat_metabolite <- vroom(paste(directory2,"sweat_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                sweat_metabolite <- vroom(url("https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&sweat=1&filter=true"),delim=",",col_names = TRUE )
-                sweat_metabolite <- as.data.frame(sweat_metabolite)
-                write.table(sweat_metabolite,paste(directory2,"sweat_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
-
-if (str_detect(COMMAND$LABEL[i], fixed("Breast milk", ignore_case=TRUE))){
-        if (file.exists("breast_milk_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                breast_milk_metabolite <- vroom(paste(directory2,"breast_milk_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                breast_milk_metabolite <- vroom(url("https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&breast_milk=1&filter=true"),delim=",",col_names = TRUE )
-                breast_milk_metabolite <- as.data.frame(breast_milk_metabolite)
-                write.table(breast_milk_metabolite,paste(directory2,"breast_milk_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
 
 
-if (str_detect(COMMAND$LABEL[i], fixed("Bile", ignore_case=TRUE))){
-        if (file.exists("bile_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                bile_metabolite <- vroom(paste(directory2,"bile_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                bile_metabolite <- vroom(url("https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&bile=1&filter=true"),delim=",",col_names = TRUE )
-                bile_metabolite <- as.data.frame(bile_metabolite)
-                write.table(bile_metabolite,paste(directory2,"bile_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
+#SAMPLES SELECTUON BASED ON THEIR LABEL NAME (BY REGEX) -
+# IT CORRESPONDS TO -> SELECTION OPTION ON INTERFACE
+process_sample_selection(selection_samples, Cell_type, Metadata_total, matrix)
 
-if (str_detect(COMMAND$LABEL[i], fixed("Amniotic Fluid", ignore_case=TRUE))){
-        if (file.exists("AF_metabolite_annotated.tsv") == TRUE){
-                print("File available locally, using the local version")
-                AF_metabolite <- vroom(paste(directory2,"AF_metabolite_annotated.tsv",sep = "/"),delim="\t",col_names = TRUE)
-        }else{
-                print("File unavailable locally, downloading it from HMDB database")
-                options(timeout=6000)
-                AF_metabolite <- vroom(url("https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&amniotic_fluid=1&filter=true"),delim=",",col_names = TRUE )
-                AF_metabolite <- as.data.frame(AF_metabolite)
-                write.table(AF_metabolite,paste(directory2,"AF_metabolite_annotated.tsv", sep = "/"),quote = FALSE, row.names = F, sep = "\t")
-        }}
-
-#CHECK OF THE CTRL AND CONDITION LABEL (ex SLE or CTRL)
-
-
-if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
-        Metadata_total <- read_excel(DIR_METADATA)
-        print("Metadata Excel File read successfully!")
-}else{
-        Metadata_total <- vroom(DIR_METADATA, delim = "\t", col_names = TRUE)}
-
-
-#IF STATEMENT TO SELECT SAMPLES BASED ON THEIR NAME (BY REGEX) -
-# IT CORRESPOND TO -> SELECTION OPTION ON INTERFACE
-
-if (selection_samples == "YES") {
-        num <- grep(Cell_type, Metadata_total$ID_CELL_TYPE)
-        Metadata_Bcell <- Metadata_total[num,]
-        Metadata_total <- Metadata_total[num,]
-        Identifier<-matrix$ID
-        num <-which(colnames(matrix) %in% Metadata_Bcell$ID_CELL_TYPE )
-        matrix <- as.matrix(matrix[,num])
-        print(Metadata_Bcell$ID_CELL_TYPE)
-        num <-which(Metadata_Bcell$ID_CELL_TYPE  %in% colnames(matrix) )
-        Metadata_Bcell <- Metadata_Bcell[num,]
-        #If multiple select only the first column
-        Metadata_Bcell <- Metadata_Bcell[!duplicated(Metadata_Bcell$ID), ]
-        
-        Metadata_Bcell<-Metadata_Bcell[order(Metadata_Bcell$ID),]
-        matrix<-matrix[,order(colnames(matrix))]
-        
-} else {
-        print("No samples selection")
-        Metadata_Bcell <- Metadata_total
-        Metadata_Bcell<-Metadata_Bcell[order(Metadata_Bcell$ID),]
-        matrixi <- matrix[,2:ncol(matrix)]
-        matrix[,2:ncol(matrix)]<-matrixi[,order(colnames(matrixi))]
-        matrix<-as.data.frame(matrix)
-        
-        Metadata_Bcell <- Metadata_total
-        num <-which(matrix$ID %in% Metadata_Bcell$ID)
-        Identifier<-matrix$ID
-        matrix <- as.matrix(matrix[num,])
-        print(Metadata_Bcell$ID)
-        num <-which(Metadata_Bcell$ID  %in% matrix[,1] )
-        Metadata_Bcell <- Metadata_Bcell[num,]
-        #If multiple select only the first column
-        Metadata_Bcell <- Metadata_Bcell[!duplicated(Metadata_Bcell$ID), ]
-        
-        Metadata_Bcell<-Metadata_Bcell[order(Metadata_Bcell$ID),]
-        matrix<-matrix[order(matrix[,1]),]
-}
 
 Metadata <- Metadata_Bcell
 Metadata_individual=NULL
@@ -522,50 +199,9 @@ matrix<- matrix[outs,]
 
 #FILTERING SAMPLES BASED ON METADATA CRITERIA SELECTED. 
 #DEFINED IN ADVANCED OPTION, METADATA SECTION
-METADATA_FILT <- !is.na(COMMAND_ADVANCED[3,grep( "*.FILTERING.*", colnames(COMMAND_ADVANCED))])
-METADATA_FILT_INDEX <-grep( "*.FILTERING.*", colnames(COMMAND_ADVANCED))
 
-repetition = 0
-for (meta_filter in METADATA_FILT_INDEX){
-        repetition <- repetition + 1 
-        if (!is.na(COMMAND_ADVANCED[3,grep( "*.FILTERING.*", colnames(COMMAND_ADVANCED))])[repetition]){
-                COLNAME<-as.character(COMMAND_ADVANCED[1,meta_filter])
-                if (as.character(COMMAND_ADVANCED[2,meta_filter]) =="Numerical"){
-                        To_filter<-as.numeric(unlist(Metadata[,COLNAME]))
-                        simbol<-substr(as.character(COMMAND_ADVANCED[3,meta_filter]),1,1)
-                        characters_to_remove <- c(">", "<", "=", " ")
-                        value_threshold <- as.numeric(gsub(paste(characters_to_remove, collapse = "|"), "", as.character(COMMAND_ADVANCED[3,meta_filter])))
-                        
-                        comparison_operator <- switch(simbol,
-                                                      "<" = function(a, b) a < b,
-                                                      ">" = function(a, b) a > b,
-                                                      "=" = function(a, b) a == b,
-                                                      ">=" = function(a, b) a >= b,
-                                                      "<=" = function(a, b) a <= b,
-                                                      NA)
-                        
-                        Metadata <- Metadata[comparison_operator(To_filter, value_threshold),]
-                        matrix <- matrix[comparison_operator(To_filter, value_threshold),]
-                        
-                }else if (as.character(COMMAND_ADVANCED[2,meta_filter]) =="Factors"){
-                        To_filter<- as.character(unlist(Metadata[,COLNAME]))
-                        simbol<-substr(as.character(COMMAND_ADVANCED[3,meta_filter]),1,2)
-                        characters_to_remove <- c("!=", "==", " ")
-                        value_threshold <- as.character(gsub(paste(characters_to_remove, collapse = "|"), "", as.character(COMMAND_ADVANCED[3,meta_filter])))
-                        
-                        comparison_operator <- switch(simbol,
-                                                      "==" = function(a, b) a == b,
-                                                      "!=" = function(a, b) a != b,
-                                                      NA)
-                        
-                        Metadata <- Metadata[comparison_operator(To_filter, value_threshold),]
-                        DGE3 <- DGE3[comparison_operator(To_filter, value_threshold),]
-                }
-                
-        }else{
-                print("skip_filtering")
-        }
-}
+filter_samples_by_metadata(COMMAND_ADVANCED, Metadata, matrix)
+
 
 
 ###
@@ -574,67 +210,29 @@ rownames(matrix) <- matrix$ID
 ###
 
 
-#This part of code is to refill the column having an NA name and rename the duplicated ones
+#This part of code is to refill the column names having an NA name and rename the duplicated ones
 na_cols <- which(is.na(colnames(matrix)))
 new_names <- paste("UNKNOWN",1:sum(is.na(colnames(matrix))),sep="") 
 colnames(matrix)[na_cols] <- new_names
-
 colnames(matrix) <- make.unique(names(matrix), sep = "_")
 
-#====================================
 
+#QC VISUALISATION FUNCTION
 if(COMMAND$PREVIEW[i] == "YES"){
-
-#Block to open the Quality control windows to select filtering, normalization and visualize the QC.
-#ADD the ID to the first column
-sample_preview<-matrix$ID
-numeric_data <- matrix[,-1]
-
-numeric_data<-apply(numeric_data,2,as.numeric)
-rownames(numeric_data) <- sample_preview
-
-metadata <- Metadata
-numeric_data <- as.data.frame(numeric_data)
-colnames(metadata)[colnames(metadata) == "CONDITION"] <- "condition"
-
-# Source the BiomiX_preview script to load the runShinyApp() function
-source(paste(directory,'/BiomiX_preview.r', sep=""))
-
-browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
-
-# Now call the runShinyApp function with numeric_data and metadata
-options(browser = get_default_browser())
-print("Pre QC data visualization. If the browser does not open automatically copy and paste the link on a browser")
-print("One completed the analysis modification click on close app to continue the analysis")
-print("ATTENTION!: IF the browser does not open set up the path to your browser on the CHOISE_BROWSER_pre-view file in the BiomiX _INSTALL folder")
-
-Preview <- shiny::runApp(runShinyApp(numeric_data, metadata), launch.browser = TRUE)
-
-matrix<-Preview$matrix
-Metadata<-Preview$metadata
-
-qc_elim<-which(Metadata$condition == "QC")
-Metadata<-Metadata[-qc_elim,]
-matrix <-matrix[-qc_elim,]
-
-
-matrix <- cbind(ID=Metadata$ID, matrix)
-colnames(Metadata)[colnames(Metadata) == "condition"] <- "CONDITION"
-
-}else{
-        print("no QC pre-visualization")
+browser_analysis <- readLines(paste(directory, '/_INSTALL/CHOISE_BROWSER_pre-view', sep = ""), n = 1)
+run_qc_preview(COMMAND, i, matrix, Metadata, directory)
+} else {
+  print("no QC pre-visualization")
 }
 
-#===================================
+
+#SAVING THE INPUT FOR THE MOFA ANALYSIS
 
 matrixs <- matrix 
 matrixs <- add_column(matrixs, Metadata$CONDITION, .after = 1)
 colnames(matrixs)[2] <- "CONDITION"
 matrixs[,3:ncol(matrixs)]<-apply(matrixs[,3:ncol(matrixs)],2,as.numeric)
 #matrixs[matrixs == 0] <- 1
-
-
-#SAVING THE INPUT FOR THE MOFA ANALYSIS
 write.table(matrixs,paste(directory2,"/Metabolomics_",Cell_type, "_MOFA.tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
 
 
@@ -643,103 +241,6 @@ if (STATISTICS == "YES"){
 
 
 # #### FUNCTION DEFINITION FOR STATISTICAL TEST BETWEEN CONTROL AND TESTED SAMPLES----
-
-
-DMS_REFERENCE <- function(Condition1){
-        print(Condition1)
-        CON <- matrix[Metadata$CONDITION == Condition1,] #Example CONTROL vs SLE patients
-        samp_CON<-row.names(CON) #RUN IT ALWAYS + ONE DISEASE
-        CON <-CON[,c(-1,-2)] #RUN IT ALWAYS + ONE DISEASE
-        CON <-apply(CON,2,as.numeric) #RUN IT ALWAYS + ONE DISEASE
-        
-        y=NULL
-        for (i in seq(1:length(colnames(CON)))) {
-                if (all_same(CON[,i])){
-                        y <-append(y, 1)
-                }else{
-                        res <- (shapiro.test(CON[,i]))
-                        y <-append(y, res[["p.value"]])
-                }}
-        
-        CON<-as.data.frame(CON)
-        shapiro_test_CON <- y
-        shapiro <-shapiro_test_CON < 0.05
-        print(paste(length(shapiro[shapiro== TRUE]), "variables out of", length(shapiro), "not having a normal distribution in", args[2]))
-        if (length(shapiro[shapiro== TRUE]) > length(shapiro)/2 ) {
-                print(paste("Suggested Log normalization before the MOFA analysis for", args[2]))
-        }
-        
-        rownames(CON) <-samp_CON
-        return(CON)
-}
-
-
-
-
-
-DMS_TESTED <- function(Condition2){
-        print(Condition2)
-        SLE <- matrix[Metadata$CONDITION == Condition2,] #RUN LINE 58 and 59 for CTRL vs SLE
-        samp_SLE<-row.names(SLE) #RUN LINE 80 and 81 for CTRL vs SLE
-        SLE <-SLE[,c(-1,-2)] #RUN LINE 109 and 110 for CTRL vs SLE
-        SLE <-apply(SLE,2,as.numeric) #RUN LINE 130 and 131 for CTRL vs SLE
-        
-        y=NULL
-        for (i in seq(1:length(colnames(SLE)))) {
-                if (all_same(SLE[,i])){
-                        y <-append(y, 1)
-                }else{
-                        res <- (shapiro.test(SLE[,i]))
-                        y <-append(y, res[["p.value"]])
-                }}
-        
-        SLE<-as.data.frame(SLE)
-        shapiro_test_SLE <- y
-        shapiro <-shapiro_test_SLE < 0.05
-        length(shapiro[shapiro== TRUE]) 
-        print(paste(length(shapiro[shapiro== TRUE]), "variables out of", length(shapiro), "not having a normal distribution in",args[1]))
-        if (length(shapiro[shapiro== TRUE]) > length(shapiro)/2 ) {
-                print(paste("Suggested Log normalization before the MOFA analysis for", args[1]))
-        }
-        #If the p.value is bigger than 0.05 we don't have difference
-        #between our and a normal distribution (generated randomly)
-        
-        rownames(SLE) <-samp_SLE
-        
-        # Wilcox test CON vs SLE
-        pval=NULL
-        for (i in 1:ncol(SLE)) {
-                res <-wilcox.test(CON[,i],SLE[,i], alternative = "two.sided") 
-                pval <-append(pval, res[["p.value"]])
-        }
-        
-        
-        
-        fold=NULL
-        for (i in 1:ncol(CON)) {
-                up <-CON[,i]
-                up <-up[!is.na(up)]
-                down <-SLE[,i]
-                down <-down[!is.na(down)]
-                FC <- log2(abs(median(down) / median(up)))
-                fold <-append(fold, FC)}
-        
-        
-        SLE<-as.data.frame(t(SLE)) #RUN THESE LINES FOR THE CTRL VS SLE COMPARISON
-        colnames(SLE) <- samp_SLE
-        SLE$shapiro_pvalue <- shapiro_test_SLE
-        SLE$p_val <- pval
-        SLE$log2FC <- fold
-        
-        return(SLE)
-}
-
-
-#Function to check if all the variable elements are the same
-all_same <- function(x) {
-        x<-x[!is.na(x)]
-        all(x == x[1])
-}
 
 
 
@@ -752,515 +253,31 @@ gc()
 
 #CHECK IF THE PEAKS ARE ALREADY ANNOTATED OR NOT, IF NOT IT WILL COMPARE THE PEAK
 #SIGNALS DIRECTLY, OTHERWISE IT WILL START THE ANNOTATION AT FIRST.
-
 if(ANNOTATION == "Annotated"){
-        
-        dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        directory2 <- paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="")
-        
-        setwd(directory2)
-        
-        total <- TEST
-        total$padj = p.adjust(total$p_val, method = "fdr")
-        totalshOK <- total %>% filter(padj < padju)
-        total <- total %>% arrange(padj)
-        x <- colnames(total) %in% matrix$ID
-        total <- total[,!x]
-        total_3 <- total
-        colnames(total_3)[colnames(total_3) == "NAME"] <- "NAME.x"
-        write.table(total_3,paste(directory2,"/",Cell_type,"_",args[1],"_vs_",args[2],"_results.tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
-        
-        
-        total$padj<-as.numeric(total$padj)
-        total$log2FC<-as.numeric(total$log2FC)
-        
-        total_min <- total[,c("NAME", "log2FC", "p_val", "padj")]
-        total_min <- total_min %>% arrange(padj)
-        write.table(total_min,paste(directory2,"/",Cell_type,"_",args[1],"_vs_",args[2],"_peak_statistics.tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
 
+###  DGE ANALYSIS ###  
+run_dge_analysis_annotated(TEST, matrix, Metadata, Cell_type, args, directory, padju, LogFC)
+
+###  HEATMAP ###
+generate_heatmap_annotated(ALTI, BASSI, matrix, Metadata, Heatmap_genes, Cell_type, args, directory2)
         
-        ALTI <- subset(total, padj < padju)
-        ALTI <-subset(ALTI, log2FC > LogFC)
-        ALTI <- ALTI[order(ALTI$padj), ]
-        #
-        BASSI <- subset(total, padj < padju)
-        BASSI <- subset(BASSI, log2FC < -LogFC)
-        BASSI <- BASSI[order(BASSI$padj), ]
-        x <- total$NAME %in% ALTI$NAME
-        NO<-total[!x,]
-        x <- NO$NAME %in% BASSI$NAME
-        NO<-NO[!x,]
-        
-        
-        write.table(x=ALTI$Name   , file= paste(Cell_type,"_",args[1],"_",args[2],"_UP.tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x=BASSI$Name  , file= paste(Cell_type,"_",args[1],"_",args[2],"_DOWN.tsv",sep=""),sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x=ALTI   , file= paste(Cell_type,"_",args[1],"_",args[2],"_METABUP.tsv",sep="") ,sep= "\t", row.names = FALSE, col.names = TRUE,  quote = FALSE)
-        write.table(x=BASSI  , file= paste(Cell_type,"_",args[1],"_",args[2],"_METABDOWN.tsv",sep=""),sep= "\t", row.names = FALSE, col.names = TRUE,  quote = FALSE)
-        write.table(Metadata[order(Metadata$CONDITION, decreasing = TRUE),c("ID","CONDITION")],
-                    file= paste(args[1], "_",args[2],"_",Cell_type, "_metadata.tsv", sep =""),sep = "\t", quote= FALSE, row.names = FALSE)
-        
-        
-        
-        if (nrow(ALTI) == 0){
-                SKIP_ALTI <- FALSE}else{SKIP_ALTI <- TRUE}
-        if (nrow(BASSI) == 0){
-                SKIP_BASSI <- FALSE}else{SKIP_BASSI <- TRUE}
-        
-        pdf(file=paste("plot_DMA_", args[1],"_",args[2],"_", Cell_type, ".pdf", sep=""))
-        
-        library(ggplot2)
-        library(ggrepel)
-        
-        
-        p <-ggplot() +
-                ggtitle( paste("DGE", Cell_type,"_", args[1], "_vs_", args[2],sep="")) + theme(
-                        plot.title = element_text(color="black", size=14, face="bold.italic", hjust = 0.5),
-                        axis.title.x = element_text(color="black", size=14, face="bold"),
-                        axis.title.y = element_text(color="black", size=14, face="bold")) +
-                ylab("-log10(padj)") + xlab("log2FC")
-        if (SKIP_ALTI){
-                p <- p + geom_point(data = ALTI, aes(x = log2FC, y = -log10(padj)), color = "red") +
-                        geom_text_repel(data = ALTI[c(1:25), ], aes(x = log2FC , y = -log10(padj), label=NAME),hjust=0, vjust=0,size=3, arrow = NULL, force = 10, force_pull = 1, max.overlaps = 5)}
-        if (SKIP_BASSI){
-                p <- p + geom_point(data = BASSI, aes(x = log2FC, y = -log10(padj)), color = "blue") +
-                        geom_text_repel(data = BASSI[1:25, ], aes(x = log2FC , y = -log10(padj), label=NAME),hjust=0, vjust=0,size=3, force = 20, force_pull = 1, max.overlaps = 5)}
-        p <- p + geom_point(data = NO, aes(x = log2FC, y = -log10(padj)), color = "black")
-        
-        p2 <- p + geom_vline(xintercept=c(-LogFC,LogFC), col="red") +
-                geom_hline(yintercept=-log10(padju), col="red")
-        
-        print(p2)
-        dev.off()
-        
-        
-        ###  HEATMAP ###
-        
-        if (length(c(ALTI$NAME, BASSI$NAME)) > 2){
-                
-                #ADD HEATMAP CREATION HERE
-                if (nrow(ALTI) > Heatmap_genes){
-                        ALTI <- ALTI[1:Heatmap_genes,]}
-                if (nrow(BASSI) > Heatmap_genes){
-                        BASSI <- BASSI[1:Heatmap_genes,]}
-                
-                #HEATMAP INPUT ARE NORMALIZED
-                
-                
-                Heat<-matrix[,colnames(matrix) %in% c(ALTI$NAME, BASSI$NAME)]
-                samples <- rownames(Heat)
-                Heat <-apply(Heat,2,as.numeric)
-                rownames(Heat) <-samples
-                Heat<-t(Heat)
-                Heat[Heat == 0] <- 1
-                Heat <-apply(Heat,2,log10)
-                
-                library(ComplexHeatmap)
-                setwd(directory2)
-                pdf(file= paste("Heatmap_top_genes_", Cell_type,"_", args[2],"_vs_", args[1],".pdf",sep=""))
-                #dev.new()
-                
-                library(circlize)
-                col_fun = colorRamp2(c(min(Heat, na.rm = TRUE), mean(colMeans(Heat, na.rm = TRUE)), max(Heat, na.rm = TRUE)), c("blue", "black", "yellow"))
-                col_fun(seq(-3, 3))
-                
-                t<-c("CTRL" = "blue", "SLE" = "red")
-                attr(t, "names")[1]<- args[2]
-                attr(t, "names")[2]<- args[1]
-                attr(t, "names")
-                
-                ha = HeatmapAnnotation(condition = Metadata$CONDITION,
-                                       col = list(condition = t))
-                
-                Heat[is.na(Heat)] <- 0 #Add 0 when there are 0 values to allow the Heatmap plot
-                
-                p<- Heatmap(Heat,km =2, name = "SD_score", col = col_fun, clustering_distance_rows = "pearson", clustering_method_rows= "complete", clustering_method_columns ="ward.D", row_dend_width = unit(0.5, "cm"),column_dend_height = unit(60, "mm"), column_names_gp = grid::gpar(fontsize = 6),
-                            row_names_gp = grid::gpar(fontsize = 8), top_annotation = ha)
-                
-                print(p)
-                
-                #If you want to visualize the group
-                colnames(Heat)<- Metadata$CONDITION
-                
-                ha = HeatmapAnnotation(condition = Metadata$CONDITION,
-                                       col = list(condition = t))
-                p<- Heatmap(Heat,km =2, name = "SD_score", col = col_fun, clustering_distance_rows = "pearson", clustering_method_rows= "complete", clustering_method_columns ="ward.D", row_dend_width = unit(0.5, "cm"),column_dend_height = unit(60, "mm"), column_names_gp = grid::gpar(fontsize = 6),
-                            row_names_gp = grid::gpar(fontsize = 8), top_annotation = ha)
-                
-                print(p)
-                
-                dev.off()
-                
-        }
-        
-        
-        
-        
-        ##### MetPath  #####
-        library(metpath)
-        library(tidyverse)
-        library(dplyr)
-        
-        query_id<-as.data.frame(total[,c("NAME","log2FC","p_val")])
-        
-        
-        
-        if (nrow(query_id) != 0){
-                
-                if (COMMAND_ADVANCED[2,9] == "HMDB" ){
-                        colnames(query_id)[1] <- "HMDB"
-                        
-                        dir.create(path = paste(directory2,"/Pathway_analysis/", "HMDB_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/Pathway_analysis/", "HMDB_", Cell_type, "_",args[1],"_vs_", args[2], sep =""))
-                        
-                        
-                        pathway_class_HMDB = 
-                                metpath::pathway_class(hmdb_pathway)
-                        
-                        
-                        #pdf(file=paste("Pathway_analysis_HMDB_", args[1],"_",args[2],"_", Cell_type,".pdf", sep=""))
-                        
-                        
-                        gc()
-                        remain_idx = which(unlist(pathway_class_HMDB) == "Metabolic;primary_pathway")
-                        hmdb_pathway = hmdb_pathway[remain_idx]
-                        hmdb_pathway
-                        
-                        
-                        result = 
-                                enrich_hmdb(query_id = unique(query_id$HMDB), 
-                                            query_type = "compound", 
-                                            id_type = "HMDB",
-                                            pathway_database = hmdb_pathway,
-                                            only_primary_pathway = TRUE,
-                                            p_cutoff = 0.05, 
-                                            p_adjust_method = "BH", 
-                                            threads = as.numeric(COMMAND_ADVANCED[3,3]))
-                        
-                        result
-                        
-                        #dev.off()
-                        
-                        
-                        if (length(result) != 0){
-                                
-                                pdf(file=paste("Pathway_analysis_HMDB", args[1],"_",args[2],"_", Cell_type,".pdf", sep=""))
-                                
-                                x<-enrich_bar_plot(
-                                        object = result,
-                                        x_axis = "p_value_adjust",
-                                        cutoff = 1.1,
-                                        top = 10
-                                )
-                                
-                                print(x)
-                                
-                                x <-enrich_scatter_plot(object = result)
-                                
-                                print(x)
-                                
-                                write.table(result@result,paste(directory2,"/Pathway_analysis/", "HMDB_", Cell_type, "_",args[1],"_vs_", args[2], "/HMDB_table_results", sep =""),quote = FALSE, row.names = F, sep = "\t")
-                                
-                                dev.off()
-                                
-                                gc()
-                        }
-                        
-                }
-                
-                
-                if (COMMAND_ADVANCED[2,9] == "KEGG" ){
-                        colnames(query_id)[1] <- "KEGG"
-                        
-                        pathway_class_KEGG = 
-                                metpath::pathway_class(kegg_hsa_pathway)
-                        
-                        dir.create(path = paste(directory2,"/Pathway_analysis/", "KEGG_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/Pathway_analysis/", "KEGG_", Cell_type, "_",args[1],"_vs_", args[2], sep =""))
-                        
-                        
-                        #pdf(file=paste("Pathway_analysis_KEGG_", args[1],"_",args[2],"_", Cell_type,".pdf", sep=""))
-                        
-                        
-                        head(pathway_class_KEGG)
-                        remain_idx =
-                                pathway_class_KEGG %>%
-                                unlist() %>%
-                                stringr::str_detect("Disease") %>%
-                                `!`() %>%
-                                which()
-                        
-                        remain_idx
-                        
-                        pathway_database =
-                                kegg_hsa_pathway[remain_idx]
-                        
-                        pathway_database
-                        
-                        
-                        result = 
-                                enrich_kegg(query_id = unique(query_id$KEGG), 
-                                            query_type = "compound", 
-                                            id_type = "KEGG",
-                                            pathway_database = pathway_database, 
-                                            p_cutoff = 0.05, 
-                                            p_adjust_method = "BH", 
-                                            threads = as.numeric(COMMAND_ADVANCED[3,3]))
-                        
-                        
-                        result
-                        
-                        #dev.off()
-                        
-                        if (length(result) != 0){
-                                
-                                pdf(file=paste("Pathway_analysis_KEGG", args[1],"_",args[2],"_", Cell_type,".pdf", sep=""))
-                                
-                                x <-enrich_bar_plot(
-                                        object = result,
-                                        x_axis = "p_value_adjust",
-                                        cutoff = 1.1,
-                                        top = 10
-                                )
-                                print(x)
-                                
-                                x<-enrich_scatter_plot(object = result)
-                                print(x)
-                                
-                                write.table(result@result,paste(directory2,"/Pathway_analysis/", "KEGG_", Cell_type, "_",args[1],"_vs_", args[2], "/KEGG_table_results.tsv", sep =""),quote = FALSE, row.names = F, sep = "\t")
-                                
-                                dev.off()
-                        }
-                }
-                
-        }else{
-                print("NO STATISTICAL SIGNIFICANT PEAK FOR METABOLITE PATHWAY ANALYSIS")
-        }
-        
-        
-        ##### MetaboAnalistR  #####
-        
-        
-        #Enrichment analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Enrichment_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Enrichment_Analysis", sep =""))
-        
-        if (COMMAND_ADVANCED[2,9] == "HMDB" ){
-                write.table(x= query_id$HMDB[!is.na(query_id$HMDB)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        if (COMMAND_ADVANCED[2,9] == "KEGG" ){
-                write.table(x= query_id$Kegg[!is.na(query_id$Kegg )] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        if (COMMAND_ADVANCED[2,9] == "compound_name" ){
-                write.table(x= query_id$Name[!is.na(query_id$Name )] , file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        
-        
-        #Pathway analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Pathway_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Pathway_Analysis", sep =""))
-        
-        if (COMMAND_ADVANCED[2,9] == "HMDB" ){
-                write.table(x= query_id$HMDB[!is.na(query_id$HMDB)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        if (COMMAND_ADVANCED[2,9] == "KEGG" ){
-                write.table(x= query_id$Kegg[!is.na(query_id$Kegg )] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        if (COMMAND_ADVANCED[2,9] == "compound_name" ){
-                write.table(x= query_id$Name[!is.na(query_id$Name )] , file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        
-        
-        #Joint-Pathway analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Joint_Pathway_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Joint_Pathway_Analysis", sep =""))
-        
-        query_id_select <- query_id[,c(1,2)]
-        
-        if (COMMAND_ADVANCED[2,9] == "HMDB" ){
-                write.table(x= query_id_select, file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        if (COMMAND_ADVANCED[2,9] == "KEGG" ){
-                write.table(x= query_id_select , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        if (COMMAND_ADVANCED[2,9] == "compound_name" ){
-                write.table(x= query_id_select, file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        
-        
-        #LATE INTEGRATION TRANSCRIPTOMICS
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Transcriptomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2, sep="")),value=TRUE)
-                        LIST_GENE<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Transcriptomes_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Transcriptomes_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("Gene.name", "log2FoldChange")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }}
-        
-        #LATE INTEGRATION METHYLOMICS
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Methylomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Methylomics/OUTPUT/", files[fil], sep="")),value=TRUE)
-                        LIST_GENE<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("gene", "logFC")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }}
-        
-        
-        #Network analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Network_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Network_Analysis", sep =""))
-        
-        query_id_select <- query_id[,c(1,2)]
-        
-        if (COMMAND_ADVANCED[2,9] == "HMDB" ){
-                write.table(x= query_id_select, file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        if (COMMAND_ADVANCED[2,9] == "KEGG" ){
-                write.table(x= query_id_select , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                } #Sometimes does work, is not able to write the file, exclusively in the network section (?)
-        if (COMMAND_ADVANCED[2,9] == "compound_name" ){
-                write.table(x= query_id_select, file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-        
-        
-        #LATE INTEGRATION TRANSCRIPTOMICS
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Transcriptomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2, sep="")),value=TRUE)
-                        LIST_GENE<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Network_Analysis/Transcriptomes_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Network_Analysis/Transcriptomes_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("Gene.name", "log2FoldChange")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }
-        }
-        
-        
-        #LATE INTEGRATION METHYLOMICS
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Methylomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Methylomics/OUTPUT/", files[fil], sep="")),value=TRUE)
-                        LIST_GENE<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("gene", "logFC")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }}
-        
+##### MetPath  #####
+run_metpath_pipeline_annotated(total, COMMAND_ADVANCED, Cell_type, args, directory2, hmdb_pathway, kegg_hsa_pathway)
+
+##### MetaboAnalistR  #####
+run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args, directory, directory2)        
         
 } else {
         
-        
-        
         if(ANNOTATION == "MS2"){  
-                
-                
-                #### MS/MS FILTERING ####
-                library(metid)
-                
-                directory3 <- paste(directory,"/Metabolomics",sep="")
-                setwd(directory3)
-                
-                #path <- file.path(".", "INPUT")
-                path <- as.character(COMMAND_ADVANCED[1,19])
-                rt_threshold = as.numeric(COMMAND_ADVANCED[2,8])
-                
-                #LOADING MS2 DATABASES
-                param = list()
-                if (sum(MS2_databases == "HMDB") == 1){
-                        HMDA <- load(paste(directory,"/Integration/x_BiomiX_DATABASE/hmdb_database0.0.3.rda",sep=""))
-                        param1<-identify_metabolites_params(
-                                ms1.ms2.match.mz.tol = as.numeric(COMMAND_ADVANCED[1,8]),
-                                #rt.match.tol = rt_threshold,
-                                ms1.ms2.match.rt.tol = rt_threshold,
-                                polarity = as.character(COMMAND_ADVANCED[1,24]),
-                                ce = "all",
-                                column = as.character(COMMAND_ADVANCED[3,23]),
-                                total.score.tol = 0.5,
-                                candidate.num = 3,
-                                threads = as.numeric(COMMAND_ADVANCED[3,3]),
-                                database = hmdb_database0.0.3)
-                        param<-append(param,param1)
-                }
-                if (sum(MS2_databases == "MASSBANK") == 1){
-                        MASSBANK <- load(paste(directory,"/Integration/x_BiomiX_DATABASE/massbank_database0.0.3.rda",sep=""))
-                        param1<-identify_metabolites_params(
-                                ms1.ms2.match.mz.tol = as.numeric(COMMAND_ADVANCED[1,8]),
-                                #rt.match.tol = rt_threshold,
-                                ms1.ms2.match.rt.tol = rt_threshold,
-                                polarity = as.character(COMMAND_ADVANCED[1,24]),
-                                ce = "all",
-                                column = as.character(COMMAND_ADVANCED[3,23]),
-                                total.score.tol = 0.5,
-                                candidate.num = 3,
-                                threads = as.numeric(COMMAND_ADVANCED[3,3]),
-                                database = massbank_database0.0.3)
-                        param<-append(param,param1)
-                }
-                if (sum(MS2_databases == "MONA") == 1){
-                        MONA <- load(paste(directory,"/Integration/x_BiomiX_DATABASE/mona_database0.0.3.rda",sep=""))
-                        param1<-identify_metabolites_params(
-                                ms1.ms2.match.mz.tol = as.numeric(COMMAND_ADVANCED[1,8]),
-                                #rt.match.tol = rt_threshold,
-                                ms1.ms2.match.rt.tol = rt_threshold,
-                                polarity = as.character(COMMAND_ADVANCED[1,24]),
-                                ce = "all",
-                                column = as.character(COMMAND_ADVANCED[3,23]),
-                                total.score.tol = 0.5,
-                                candidate.num = 3,
-                                threads = as.numeric(COMMAND_ADVANCED[3,3]),
-                                database = mona_database0.0.3)
-                        param<-append(param,param1)
-                }
+          
+          
+          #Generation parameters for tidymass annotation multidataset
+          run_msms_filtering(COMMAND_ADVANCED, directory, MS2_databases)
                 
                 param2 <- param
                 
+                #RENAME DATABASES TO UPPERCASE
                 for (it in 1:length(param)){
                         if( MS2_databases[it] == toupper(param[[1]]$database@database.info$Source)){
                                 param2[[it]] <- param[[1]]
@@ -1287,7 +304,9 @@ if(ANNOTATION == "Annotated"){
                 Sys.time()
                 setwd(directory3)
                 
+
                 
+                #MULTI DATASET ANNOTATION BY TIDYMASS
                 print(files_MS2)
                 annotate_result5 <- 
                         identify_metabolite_all(ms1.data = "TEMP.csv", 
@@ -1321,119 +340,15 @@ if(ANNOTATION == "Annotated"){
                 #databases. The final file (annot) will be used to replace the metabolites
                 #with a level of annotation of 3 or 4.
                 
-                dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                directory2 <- paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="")
+                build_msms_annotation(directory, Cell_type, args, param, annotate_result5)
                 
+                #Genetartion MS2 spectra for each peak and the metabolites identified in the reference databases
+                generate_ms2_spectra_plots(directory, directory2, Cell_type, args, MS2_databases, annotate_result5)
+                  
                 
-                setwd(directory2)
-                
-                gc()        
-                unione <- list()
-                unione_all <- list()
-                iter=0
-                for (dat in 1:length(param)){
-                        iter = iter + 1
-                        xx<-names(annotate_result5[[dat]]@identification.result)
-                        saved<- annotate_result5[[dat]]@match.result[annotate_result5[[dat]]@match.result$MS2.spectra.name %in% xx,]
-                        
-                        y=NULL
-                        
-                        for (pe in seq(1:length(rownames(saved)))) {
-                                
-                                col_names<-colnames(annotate_result5[[dat]]@identification.result[[pe]])
-                                
-                                for(c in seq(1:nrow(annotate_result5[[dat]]@identification.result[[pe]]))){
-                                        
-                                        line<-annotate_result5[[dat]]@identification.result[[pe]][c,]
-                                        x<-names(annotate_result5[[dat]]@identification.result[pe])
-                                        x<-saved$MS2.spectra.name %in% x
-                                        peak_number <- saved$MS1.peak.name[x]
-                                        t<-unlist(c(peak_number, line))
-                                        y <-rbind(y, t)
-                                }
-                        }
-                        
-                        if(iter==1){
-                                unione <- as.data.frame(y)
-                                colnames(unione)[1] <- "peak_number"
-                                #write.table(unione,paste(directory2,"/",Cell_type,"_", "MS2_",names(annotate_result5)[dat],"_results", sep = ""),quote = FALSE, row.names = F, sep = "\t")
-                                unione_all <- rbind(unione_all,unione)
-                        }else{
-                                unione2 <- as.data.frame(y)
-                                colnames(unione2)[1] <- "peak_number"
-                                #write.table(unione2,paste(directory2,"/",Cell_type,"_", "MS2_",names(annotate_result5)[dat],"_results", sep = ""),quote = FALSE, row.names = F, sep = "\t")
-                                unione<-rbind(unione2[which(!unione2$peak_number %in% unione$peak_number),],unione)
-                                unione_all <- rbind(unione_all,unione2)
-                                
-                        }
-                        
-                }
-                
-                unione_all
-                unione_all <- unione_all[!duplicated(unione_all$Compound.name) & !duplicated(unione_all$Lab.ID ), ]
-                unione_all$DATABASE <- "NA"
-                unione_all$DATABASE[grep("*HMDB*",unione_all$Lab.ID )] <- "HMDB"
-                unione_all$DATABASE[grep("MassBank*",unione_all$Lab.ID )] <- "MassBank"
-                unione_all$DATABASE[grep("MONA*",unione_all$Lab.ID )] <- "MONA"
-                
-                unione <- unione[!duplicated(unione$Compound.name) & !duplicated(unione$Lab.ID ), ]  #?
-                annot<-unione
-                unione$DATABASE <- "FINAL_SELECTED"
-                unione_all <- rbind(unione_all,unione)
-                numbe<-as.numeric(gsub("peak", "", unione_all$peak_number))
-                unione_all<-unione_all[order(numbe),]
-                write.table(unione_all,paste(directory2,"/",Cell_type,"_", "MS2_results.tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
-                
-                
-                
-                #ADD PART WHERE THERE ARE THE PLOTS FOR EACH PEAK2 IDENTIFIED
-                dir.create(path = paste(directory2,"/MS2_SPECTRA", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                setwd(paste(directory2,"/MS2_SPECTRA", sep =""))
-                
-                if (sum(MS2_databases == "HMDB") == 1){
-                        Y<- grep("HMDB*", names(annotate_result5), ignore.case=TRUE)
-                        HMDA <- load(paste(directory,"/Integration/x_BiomiX_DATABASE/hmdb_database0.0.3.rda",sep=""))
-                        peak_to_show<-names(annotate_result5[[Y]]@identification.result)
-                        matching<-annotate_result5[[Y]]@match.result
-                        show<-matching[matching$MS2.spectra.name %in% peak_to_show,]
-                        ms2.plot1 <- ms2plot(object = annotate_result5[[Y]],
-                                             database = hmdb_database0.0.3,
-                                             which.peak = "all")
-                        file.rename("ms2_match_plot", "ms2_match_plot_HMDB")}
-                
-                if (sum(MS2_databases == "MASSBANK") == 1){
-                        Y<- grep("MASSBANK*", names(annotate_result5),ignore.case=TRUE)
-                        HMDA <- load(paste(directory,"/Integration/x_BiomiX_DATABASE/massbank_database0.0.3.rda",sep=""))
-                        peak_to_show<-names(annotate_result5[[Y]]@identification.result)
-                        matching<-annotate_result5[[Y]]@match.result
-                        show<-matching[matching$MS2.spectra.name %in% peak_to_show,]
-                        ms2.plot1 <- ms2plot(object = annotate_result5[[Y]],
-                                             database = massbank_database0.0.3,
-                                             which.peak = "all")
-                        file.rename("ms2_match_plot", "ms2_match_plot_MASSBANK")}
-                
-                if (sum(MS2_databases == "MONA") == 1){
-                        Y<- grep("MONA*", names(annotate_result5),ignore.case=TRUE)
-                        HMDA <- load(paste(directory,"/Integration/x_BiomiX_DATABASE/mona_database0.0.3.rda",sep=""))
-                        peak_to_show<-names(annotate_result5[[Y]]@identification.result)
-                        matching<-annotate_result5[[Y]]@match.result
-                        show<-matching[matching$MS2.spectra.name %in% peak_to_show,]
-                        ms2.plot1 <- ms2plot(object = annotate_result5[[Y]],
-                                             database = mona_database0.0.3,
-                                             which.peak = "all")
-                        file.rename("ms2_match_plot", "ms2_match_plot_MONA")}
-                
-                
-                
-                dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                directory2 <- paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="")
-                
-                
-                setwd(directory2)      
         }else{
                 
+                #This is the starting of the MS1 pipeline and it is shared with the MS2
                 dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
                 dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
                 directory2 <- paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="")
@@ -1542,95 +457,13 @@ if(ANNOTATION == "Annotated"){
         #THIS IF ELSE ALLOWS TO UPLOAD A PREVIOUS ANNOTATION MADE ON THE SAME DATASET.
         #IF THIS ANNOTATION IS NOT AVAILABLE OR IF IT IS THE FIRST ANALYSIS WILL AS TO
         #CEU MASS MEDIATOR TO DO IT.
-        if (file.exists(paste("Annotation_metabolites_", Cell_type,"_", args[1], "_vs_", args[2],".tsv", sep = "")) == TRUE){
-          print("File available locally, using the local version")
-          advanced_batch_df <- vroom(paste(directory2,"/Annotation_metabolites_",Cell_type,"_", args[1], "_vs_", args[2],".tsv", sep = ""),delim="\t",col_names = TRUE)
-        }else{
-          advanced_batch_df <- data.frame()
-        }
-        if (nrow(advanced_batch_df) != 0 || ncol(advanced_batch_df) != 0){
-                print("File is empty — using CMMR and CEUMASS mediator server to retrieve annotation.")
-        }else{
-                
-                
-                
-                
-                library(cmmr)
-                
-                #Allow to user to change the option based on their request  
-                
-                #  '["hmdb","metlin", "kegg", "lipidmaps"]'
-                # '["M+H","M+Na","M+NH4","M+H-H2O"]'
-                # databases <-list("hmdb", "metlin", "kegg", "lipidmaps" )
-                # ducts <-list("M+H", "M+Na", "M+NH4", "M+H-H2O" )
-                # masses_mode = "mz"
-                # Ion_mode = "positive"
-                # tolerance = 10
-                # MASSI <- c(399.3367, 421.31686, 315.2424, 337.2234, 280.2402)
-                # RT <- c(18.842525, 18.842525, 8.144917, 8.144917, 28.269503, 4.021555)
-                
-                
-                # advanced_batch_df <- advanced_batch_search(
-                #         cmm_url             = paste0(
-                #                 'http://ceumass.eps.uspceu.es/mediator/api/v3/',
-                #                 'advancedbatch'),
-                #         chemical_alphabet   = 'all',
-                #         modifiers_type      = 'none',
-                #         metabolites_type    = 'all-except-peptides',
-                #         databases           = databases,
-                #         masses_mode         = masses_mode,
-                #         ion_mode            = Ion_mode,
-                #         adducts             = ducts,
-                #         deuterium           = 'false',
-                #         tolerance           = tolerance,
-                #         tolerance_mode      = "ppm",
-                #         #masses              = MASS,
-                #         masses              = "[114.0907,245.0765]",
-                #         all_masses          = '[]',
-                #         #retention_times     = RT,
-                #         retention_times     = "[2.316083333,0.948808333]",
-                #         all_retention_times = '[]'
-                # )
-          
-     
-                library(cmmr)
-                
-                advanced_batch_df <- advanced_batch_search(
-                        cmm_url = "https://ceumass.eps.uspceu.es/api/v3/advancedbatch",
-                        chemical_alphabet = "all",
-                        modifiers_type = "none",
-                        metabolites_type = "all-except-peptides",
-                        databases = databases,  #create a list
-                        masses_mode = as.character(masses_mode),
-                        ion_mode = as.character(Ion_mode),
-                        adducts = ducts,
-                        deuterium = FALSE,
-                        tolerance = as.numeric(tolerance),
-                        tolerance_mode = "ppm",
-                        masses = MASS,
-                        all_masses = list(),
-                        retention_times = RT ,
-                        all_retention_times = list(),
-                        composite_spectra = list(),
-                        all_composite_spectra = list()
-                )
-                
-                
-                head(advanced_batch_df)
-                str(advanced_batch_df)
-                
-                
-
-                
-                
-                
-                #NOTE ADD THE OPTIONS WHEN CEU MASS MEDIATOR WILL WORK
-                
-                
-                print("File unavailable locally, generating the annotation from Ceu Mass Mediator database")
-                write.table(advanced_batch_df,paste(directory2,"/Annotation_metabolites_",Cell_type,"_", args[1], "_vs_", args[2] ,".tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
-                
-        }
+        
+        retrieve_advanced_batch_annotation(directory2, Cell_type, args, databases, masses_mode, Ion_mode, ducts, tolerance, MASS, RT)
+        
+        #===============================================================================
+        ### RESTART FROM HERE
+        
+        
         
         
         #save the annotation to avoid to run again the annotation search
@@ -1665,230 +498,38 @@ if(ANNOTATION == "Annotated"){
         filtering= 0
         
         
+
+        
+        
         #### FILTER OF TISSUES SPECIFIC METABOLITES IN HMDB #####
         #IF THE ANNOTATION FOR SERUM OR URINE IS AVAILABLE IT IS USED
         #TO FILTER THE RESULTS OBTAINED USING CEU MASS MEDIATOR
-        if (str_detect(COMMAND$LABEL[i], fixed("Serum", ignore_case=TRUE)) | str_detect(COMMAND$LABEL[i], fixed("Plasma", ignore_case=TRUE))){
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% serum_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,serum_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Urine", ignore_case=TRUE))) {
-                
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% urine_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,urine_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Saliva", ignore_case=TRUE))) {
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% saliva_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,saliva_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Cerebrospinal Fluid", ignore_case=TRUE))) {
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% CSF_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,CSF_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Feces", ignore_case=TRUE))) {
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% Feces_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,Feces_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-                
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Sweat", ignore_case=TRUE))) {
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% sweat_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,sweat_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Brest Milk", ignore_case=TRUE))) {
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% breast_milk_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,breast_milk_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Bile", ignore_case=TRUE))) {
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% bile_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,bile_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-                
-                
-        } else if (str_detect(COMMAND$LABEL[i], fixed("Amniotic Fluid", ignore_case=TRUE))) {
-                
-                #IF the peak annotation in ms1 doesn't have a match in the tissue selected
-                #its annotation is eliminated and degradated to level4.
-                
-                to_eliminate2 =NULL
-                for (pe in unique(tat$name)){
-                        sat<-which(tat$name == pe)
-                        if(sum(tat$HMDB[sat] %in% AF_metabolite$HMDB_ID) == 0){
-                                tat[sat,9:ncol(tat)] <- NA
-                                to_eliminate2<-append(to_eliminate2,sat[-1])
-                                
-                        }
-                        
-                }
-                tat <- tat[-to_eliminate2,]
-                
-                total <-merge(tat,AF_metabolite, by.x="HMDB", by.y="HMDB_ID",all.x=TRUE )
-                exit<-!is.na(total$identifier) & is.na(total$SMILES)
-                total <- total[!exit,]
-                filtering <- "YES"
-                gc()
-                
-                
+        
+        result <- NULL
+        
+        # Try each biospecimen
+        result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, serum_metabolite, "Serum")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, serum_metabolite, "Plasma")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, urine_metabolite, "Urine")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, saliva_metabolite, "Saliva")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, CSF_metabolite, "Cerebrospinal Fluid")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, Feces_metabolite, "Feces")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, sweat_metabolite, "Sweat")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, breast_milk_metabolite, "Brest Milk")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, bile_metabolite, "Bile")
+        if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, AF_metabolite, "Amniotic Fluid")
+        
+        # Fallback: no filtering applied
+        if (is.null(result)) {
+          print("NO BIOSPECIMENS filtering")
+          total <- tat
+          filtering <- "NO"
+          colnames(total)[which(colnames(total) == "NAME")] <- "NAME.x"
         } else {
-                print("NO BIOSPECIMENS filtering")
-                total <- tat
-                filtering <- "NO"
-                colnames(total)[which(colnames(total) == "NAME")] <- "NAME.x"
+          total <- result$total
+          filtering <- result$filtering
         }
+        
         
         
         totalshOK <- total %>% filter(padj <padju)
@@ -1907,60 +548,10 @@ if(ANNOTATION == "Annotated"){
         if(ANNOTATION == "MS2"){  
                 
                 
-                #This script is recognizing the metabolites not annotated by MS1, but annotated in MS2
-                #removing the MS1 information an replacing them entirely from the MS2 one
-                for(yy in 1:length(unique(annot$peak_number))){
-                        t<-annot$peak_number %in% unique(annot$peak_number)[yy]
-                        mix<-paste(annot$Compound.name[t], collapse = "/")
-                        mix2<-paste(annot$Adduct[t], collapse = "/")
-                        mix3<-paste(annot$mz.error[t], collapse = "/")
-                        
-                        if (sum(is.na(annot$HMDB.ID[t])) == 0){
-                                x<-substr(total$HMDB,7,11) %in% substr(annot$HMDB.ID[t], 5,9)
-                        }else{
-                                x <- FALSE
-                        }
-                        if(sum(x) == 0){
-                                print(paste(unique(annot$peak_number)[yy], "not_annotated",sep="_"))
-                                z <-which(total$NAME.x %in% unique(annot$peak_number)[yy])
-                                total[z,c(11:(ncol(total)-2))] <- "NA"
-                                total[z[1],"name"] <- mix
-                                total[z[1],"adduct"] <- mix2
-                                total[z[1],"error_ppm"] <- mix3
-                                total[z[1],"MS2_annot"] <- mix
-                                total[z[1],"annot_level"] <- "Level_2"
-                                to_eliminate2<-append(to_eliminate2,z[-1]) 
-                                
-                                #In this section the MS2 information replace the MS1
-                                #The MS1 multiple annotations are removed to keep a single MS2 one.
-                                
-                        }else{
-                                t<-total$HMDB[x]
-                                t<-which(total$HMDB %in% t & total$NAME.x == unique(annot$peak_number)[yy])
-
-                                
-                                for(c in t){
-                                        print(paste(total$NAME.x[c], "already_annotated",sep="_"))
-                                        total$MS2_annot[c] <- mix
-                                        total$name[c] <- mix
-                                        total$adduct[c] <- mix2
-                                        total$error_ppm[c] <- mix3
-                                        total$annot_level[c]  <- "Level_2"
-                                        
-                                }
-                                out<-which(total$NAME.x == unique(annot$peak_number)[yy] & total$annot_level == "Level_3")
-                                to_eliminate2 <-append(to_eliminate2,out)
-                                
-                                #This part of the script saves the metabolites annotated with a MS2 and remove the previous
-                                #MS1 annotated metabolites
-                        }
-                }
-                
-                if(length(to_eliminate2) != 0){
-                        total<-total[-to_eliminate2,]
-                }
-                
-                total$annot_level[is.na(total$name)] <- "Level_4"
+          result <- replace_ms1_with_ms2(annot, total, to_eliminate2)
+          total <- result$total
+          to_eliminate2 <- result$to_eliminate2
+          
                 
         }
         
@@ -1972,148 +563,14 @@ if(ANNOTATION == "Annotated"){
         
         pdf(file=paste("plot_DMA_", args[1],"_",args[2],"_", Cell_type,".pdf",sep=""))
         
-        library(ggplot2)
-        library(ggrepel)
+        dge_results <- perform_dge_analysis_MS1_MS2(total, padju, LogFC, Cell_type, args, Metadata, directory2)
+        ALTI <- dge_results$ALTI
+        BASSI <- dge_results$BASSI
         
-        #IF THE SERUM/URINE FILTERING HAS BEEN MADE IT WILL WILL DO THE PLOT AND 
-        #SAVE THE UP AND DOWN REGULATED METABOLITES
+        generate_heatmap_MS1_MS2(ALTI, BASSI, matrix, Heatmap_genes, Metadata, Cell_type, args, directory2)
         
-        total$padj<-as.numeric(total$padj)
-        total$log2FC<-as.numeric(total$log2FC)
-        
-        ALTI <- subset(total, padj < padju)
-        ALTI <-subset(ALTI, log2FC > LogFC)
-        ALTI <- ALTI[order(ALTI$padj), ]
-        #
-        BASSI <- subset(total, padj < padju)
-        BASSI <- subset(BASSI, log2FC < -LogFC)
-        BASSI <- BASSI[order(BASSI$padj), ]
-        x <- total$NAME.x %in% ALTI$NAME.x
-        NO<-total[!x,]
-        x <- NO$NAME.x %in% BASSI$NAME.x
-        NO<-NO[!x,]
-        
-        
-        write.table(x=ALTI$Name   , file= paste(Cell_type,"_",args[1],"_",args[2],"_UP.tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x=BASSI$Name  , file= paste(Cell_type,"_",args[1],"_",args[2],"_DOWN.tsv",sep=""),sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x=ALTI   , file= paste(Cell_type,"_",args[1],"_",args[2],"_METABUP.tsv",sep="") ,sep= "\t", row.names = FALSE, col.names = TRUE,  quote = FALSE)
-        write.table(x=BASSI  , file= paste(Cell_type,"_",args[1],"_",args[2],"_METABDOWN.tsv",sep=""),sep= "\t", row.names = FALSE, col.names = TRUE,  quote = FALSE)
-        
-        write.table(Metadata[order(Metadata$CONDITION, decreasing = TRUE),c("ID","CONDITION")],
-                    file= paste(args[1], "_",args[2],"_",Cell_type, "_metadata.tsv", sep =""),sep = "\t", quote= FALSE, row.names = FALSE)
-        
-        
-        
-        ALTI <- ALTI %>% distinct(NAME.x, .keep_all = TRUE)
-        BASSI <- BASSI %>% distinct(NAME.x, .keep_all = TRUE)
-        NO <- NO %>% distinct(NAME.x, .keep_all = TRUE)
-        
-        
-        if (nrow(ALTI) == 0){
-                SKIP_ALTI <- FALSE}else{SKIP_ALTI <- TRUE}
-        if (nrow(BASSI) == 0){
-                SKIP_BASSI <- FALSE}else{SKIP_BASSI <- TRUE}
-        
-        
-        p <-ggplot() +
-                ggtitle( paste("DGE", Cell_type,"_", args[1], "_vs_", args[2],sep="")) + theme(
-                        plot.title = element_text(color="black", size=14, face="bold.italic", hjust = 0.5),
-                        axis.title.x = element_text(color="black", size=14, face="bold"),
-                        axis.title.y = element_text(color="black", size=14, face="bold")) +
-                ylab("-log10(padj)") + xlab("log2FC")
-        if (SKIP_ALTI){
-                p <- p + geom_point(data = ALTI, aes(x = log2FC, y = -log10(padj)), color = "red") +
-                        geom_text_repel(data = ALTI[c(1:25), ], aes(x = log2FC , y = -log10(padj), label=name),hjust=0, vjust=0,size=3, arrow = NULL, force = 10, force_pull = 1, max.overlaps = 10)}
-        if (SKIP_BASSI){
-                p <- p + geom_point(data = BASSI, aes(x = log2FC, y = -log10(padj)), color = "blue") +
-                        geom_text_repel(data = BASSI[1:25, ], aes(x = log2FC , y = -log10(padj), label=name),hjust=0, vjust=0,size=3, force = 20, force_pull = 1, max.overlaps = 10)}
-        
-        p <- p + geom_point(data = NO, aes(x = log2FC, y = -log10(padj)), color = "black")
-        
-        p2 <- p + geom_vline(xintercept=c(-LogFC,LogFC), col="red") +
-                geom_hline(yintercept=-log10(padju), col="red")
-        
-        
-        print(p2)
-        dev.off()
-        
-        
-        ###  HEATMAP ###
-        
-        if (length(c(ALTI$NAME.x, BASSI$NAME.x)) > 2){
-                
-                #ADD HEATMAP CREATION HERE
-                if (nrow(ALTI) > Heatmap_genes){
-                        ALTI <- ALTI[1:Heatmap_genes,]}
-                if (nrow(BASSI) > Heatmap_genes){
-                        BASSI <- BASSI[1:Heatmap_genes,]}
-                
-                #HEATMAP INPUT ARE NORMALIZED
-                
-                Heat<-matrix[,colnames(matrix) %in% c(ALTI$NAME.x, BASSI$NAME.x),drop = FALSE]
-                samples <- rownames(Heat)
-                Heat <- as.data.frame(Heat)
-                Heat <-apply(Heat,2,as.numeric)
-                rownames(Heat) <-samples
-                Heat<-t(Heat)
-                Heat[Heat == 0] <- 1
-                Heat <-apply(Heat,2,log10)
-                annot_vis<-rownames(Heat)
-                pool<-rbind(ALTI,BASSI)
-                
-                SAVED <- NULL
-                for (ix in annot_vis){
-                        iu<- pool$NAME.x %in% ix 
-                        Gene <- as.character(pool$Name[which(iu)])
-                        SAVED<-append(Gene, SAVED)}
-                SAVED <- as.character(SAVED)
-                SAVED<-rev(SAVED)
-                
-                for (ix in 1:length(samples)){
-                        if(!is.na(SAVED[ix])){
-                                rownames(Heat)[ix] <- SAVED[ix]
-                        }
-                }
-                
-                
-                library(ComplexHeatmap)
-                setwd(directory2)
-                pdf(file= paste("Heatmap_top_genes_", Cell_type,"_", args[2],"_vs_", args[1],".pdf",sep=""))
-                #dev.new()
-                
-                library(circlize)
-                col_fun = colorRamp2(c(min(Heat, na.rm = TRUE), mean(colMeans(Heat, na.rm = TRUE)), max(Heat, na.rm = TRUE)), c("blue", "black", "yellow"))
-                col_fun(seq(-3, 3))
-                
-                t<-c("CTRL" = "blue", "SLE" = "red")
-                attr(t, "names")[1]<- args[2]
-                attr(t, "names")[2]<- args[1]
-                attr(t, "names")
-                
-                ha = HeatmapAnnotation(condition = Metadata$CONDITION,
-                                       col = list(condition = t))
-                
-                Heat[is.na(Heat)] <- 0 #Add 0 when there are 0 values to allow the Heatmap plot
-                
-                p<- Heatmap(Heat,km =2, name = "SD_score", col = col_fun, clustering_distance_rows = "pearson", clustering_method_rows= "complete", clustering_method_columns ="ward.D", row_dend_width = unit(0.5, "cm"),column_dend_height = unit(60, "mm"), column_names_gp = grid::gpar(fontsize = 6),
-                            row_names_gp = grid::gpar(fontsize = 8), top_annotation = ha)
-                
-                print(p)
-                
-                #If you want to visualize the group
-                colnames(Heat)<- Metadata$CONDITION
-                
-                ha = HeatmapAnnotation(condition = Metadata$CONDITION,
-                                       col = list(condition = t))
-                p<- Heatmap(Heat,km =2, name = "SD_score", col = col_fun, clustering_distance_rows = "pearson", clustering_method_rows= "complete", clustering_method_columns ="ward.D", row_dend_width = unit(0.5, "cm"),column_dend_height = unit(60, "mm"), column_names_gp = grid::gpar(fontsize = 6),
-                            row_names_gp = grid::gpar(fontsize = 8), top_annotation = ha)
-                
-                print(p)
-                
-                dev.off()
-                
-        }
-        
+          
+          
         ##### MetPath  #####
         library(metpath)
         library(tidyverse)
@@ -2179,6 +636,20 @@ if(ANNOTATION == "Annotated"){
         
         if(length(to_elim) != 0){
                 total <- total[-to_elim, ]}
+        
+        
+        
+        
+        run_metpath_pipeline_MS1_MS2(total,
+                                 saved,
+                                 directory2,
+                                 Cell_type,
+                                 args,
+                                 hmdb_pathway,
+                                 kegg_hsa_pathway,
+                                 COMMAND_ADVANCED)
+        
+        
         
         query_id <- total[which(total$p_val < 0.05),] #REPLACE IT WITH P.ADJ
         query_id_saved <- saved[which(saved$p_val < 0.05),]
@@ -2302,181 +773,16 @@ if(ANNOTATION == "Annotated"){
         ##### MetaboAnalistR  #####
         
         
-        #Enrichment analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Enrichment_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Enrichment_Analysis", sep =""))
+        run_metaboanalyst_pipeline_MS1_MS2(query_id,
+                                            query_id_saved,
+                                            total,
+                                            Cell_type,
+                                            args,
+                                            directory,
+                                            directory2
+                                            )
         
-        numbe<-as.numeric(gsub("peak", "", query_id$NAME.x))
-        query_id<-query_id[order(numbe),]
-        
-        write.table(x= query_id$HMDB[!is.na(query_id$HMDB)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv", sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id$KEGG[!is.na(query_id$KEGG )] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id$name[!is.na(query_id$name )] , file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        
-        numbe<-as.numeric(gsub("peak", "", query_id_saved$NAME.x))
-        query_id_saved<-query_id_saved[order(numbe),]
-        write.table(x= query_id_saved[,c(3,1,21,14)] , file= paste("HMDB_KEGG_Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],"_complete",".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = TRUE,  quote = FALSE)
-        
-        
-        #Pathway analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Pathway_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Pathway_Analysis", sep =""))
-        
-        write.table(x= query_id$HMDB[!is.na(query_id$HMDB)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id$KEGG[!is.na(query_id$KEGG )] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id$name[!is.na(query_id$name )] , file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id_saved[,c(3,1,21,14)] , file= paste("HMDB_KEGG_Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],"_complete.tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = TRUE,  quote = FALSE)
-        
-        
-        #Joint-Pathway analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Joint_Pathway_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Joint_Pathway_Analysis", sep =""))
-        
-        query_id_select <- query_id[,c("HMDB", "KEGG", "name", "log2FC")]
-        
-        write.table(x= query_id_select[,c(1,4)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id_select[,c(2,4)] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id_select[,c(3,4)], file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        
-        #LATE INTEGRATION TRANSCRIPTOMICS
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Transcriptomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2, sep="")),value=TRUE)
-                        if (length(files2) == 0) {
-                          message("No matching trascriptomics files found or not enough files — skipping to next")
-                          next
-                        }
-                        LIST_GENE<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Transcriptomes_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Transcriptomes_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("Gene.name", "log2FoldChange")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }}
-        
-        
-        #LATE INTEGRATION METHYLOMICS
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Methylomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Methylomics/OUTPUT/", files[fil], sep="")),value=TRUE)
-                        if (length(files2) == 0) {
-                          message("No matching methylation files found or not enough files — skipping to next")
-                          next
-                        }
-                        LIST_GENE<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("gene", "logFC")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }}
-        
-        
-        #Network analysis
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Network_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Network_Analysis", sep =""))
-        
-        query_id_select <- query_id[,c("HMDB", "KEGG", "name", "log2FC")]
-        
-        write.table(x= query_id_select[,c(1,4)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id_select[,c(2,4)] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        write.table(x= query_id_select[,c(3,4)], file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-        
-        
-        #LATE INTEGRATION TRANSCRIPTOMICS
-        
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Transcriptomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2, sep="")),value=TRUE)
-                        if (length(files2) == 0) {
-                          message("No matching transcriptomics files found or not enough files — skipping to next")
-                          next
-                        }
-                        LIST_GENE<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Transcriptomics/OUTPUT/", files[fil],"/",regeX2,"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Network_Analysis/Transcriptomes_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Network_Analysis/Transcriptomes_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("Gene.name", "log2FoldChange")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }}
-        
-        #LATE INTEGRATION METHYLOMICS
-        
-        regeX <- paste("*",args[1],"_vs_",args[2], sep="")
-        regeX2 <- paste(args[1],"_vs_",args[2], sep="")
-        files <- grep(regeX,list.files(paste(directory,"/Methylomics/OUTPUT",sep="")),value=TRUE)
-        
-        if (length(files) != 0){
-                for (fil in 1:length(files)){
-                        print(fil)
-                        files2 <- grep("GENES[A-Z]*",list.files(paste(directory,"/Methylomics/OUTPUT/", files[fil], sep="")),value=TRUE)
-                        if (length(files2) == 0) {
-                          message("No matching methylomics files found or not enough files — skipping to next")
-                          next
-                        }
-                        LIST_GENE<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[1], sep=""), delim="\t")
-                        LIST_GENE2<-vroom(paste(directory,"/Methylomics/OUTPUT/", files[fil],"/",files2[2], sep=""), delim="\t")
-                        LIST_GENE3<-rbind(LIST_GENE, LIST_GENE2)
-                        
-                        Sources<-str_split(files2[1], "_")[[1]][1]
-                        print(Sources)
-                        
-                        dir.create(path = paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                        setwd(paste(directory2,"/MetaboAnalyst/Joint_Pathway_Analysis/Methylomics_availables/", Sources, sep =""))
-                        
-                        write.table(x= LIST_GENE3[c("gene", "logFC")], file= paste("GENE_ID_",Sources,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
-                        
-                }}
-        
-        
-        #MSEA ANALYSIS
-        
-        dir.create(path = paste(directory2,"/MetaboAnalyst/", "Functional_analysis_MSEA", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        setwd(paste(directory2,"/MetaboAnalyst/", "Functional_analysis_MSEA", sep =""))
-        
-        MSEA <- total[,c("m/z","p_val", "log2FC", "RT_min" )]
-        colnames(MSEA) <- c("m.z","p.value", "t.score", "r.t" )
-        
-        
-        write.table(x= MSEA, file= paste("MSEA_",args[1],"_vs_",args[2],".txt",sep="")  ,sep= "\t", row.names = FALSE, col.names = TRUE,  quote = FALSE)
-        gc()
-        
+                
 }
 
 }else{

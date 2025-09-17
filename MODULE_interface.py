@@ -1427,11 +1427,14 @@ class Ui_BiomiX(object):
     def CORE_INPUT(self):
         textInput = self.ComboBox_1.currentText()
         data.append(textInput)
+        data_JSON.append(textInput)
         textInput = self.ComboBox_2.currentText()
         data.append(textInput)
+        data_JSON.append(textInput)
         # Read the directory path from directory.txt
         script_directory = os.path.dirname(os.path.abspath(__file__))
         data.append(script_directory)
+        data_JSON.append(script_directory)
 
 #READ THE METADATA TO UPLOAD ALL THE CONDITIONS AVAILABLES
 
@@ -1810,9 +1813,11 @@ class Ui_BiomiX(object):
 
         import os
 
+        os.system(" ".join(data_JSON))
         os.system(" ".join(data))
         print(" ".join(data))
         data[2:5] = []
+        data_JSON[2:5] = []
         input_analysis.clear()
         input_preview.clear()
         input_type.clear()
@@ -7293,6 +7298,7 @@ if __name__ == "__main__":
     rscript_path = os.path.join(script_dir, "_INSTALL", "R_BiomiX", "bin", "Rscript.exe")
 
     data = [rscript_path, "BiomiX_BETA.r"]
+    data_JSON = [rscript_path, "Converter_JSON.r"]
     input_index = ["input1", "input2", "input3", "input4", "input5", "input6"]
     input_analysis = []
     input_preview = []

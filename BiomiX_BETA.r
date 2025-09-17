@@ -34,12 +34,21 @@ setwd(directory)
 print(directory)
 
 library(vroom)
-#COMMAND <- vroom(paste(directory,"Commands",sep="/"), delim = "\t")
-COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
-COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-DIR_METADATA <- readLines("directory.txt")
-DIR_METADATA_output <- readLines("directory_out.txt")
+
+
+#LOADING ARGUMENTS AND VARIABLES REQUIRED IN THE CODE
+
+library(jsonlite)
+library(tidyverse)
+combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+
+
+COMMAND <- combined_json[["COMMANDS"]]
+COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
+DIR_METADATA <- combined_json[["DIRECTORY_INFO"]][["METADATA_DIR"]]
+DIR_METADATA_output <- combined_json[["DIRECTORY_INFO"]][["OUTPUT_DIR"]]
+
 
 #args = as.list(c("BLymphocytes","SJS"))
 print(args)
@@ -446,7 +455,7 @@ matr_4[12:13,1]<-c("NUMERIC_CLINICAL_DATA_FILE?", "BINARY_CLINICAL_DATA_FILE")
 dir.create(path =  paste(directory,"/","Report_parameters/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 line="#PARAMETERS OMICS INPUT#"
 write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE)
-write.table(COMMAND[,-1], file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE , row.names = F)
+write.table(COMMAND[,], file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE , row.names = F)
 line="#PARAMETERS INTEGRATION#"
 write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE)
 COMMAND_MOFA[,1]<-c("TYPE_INTEGRATION", "MULTIOMICS INTEGRATION?", "N° MOFA FACTOR CALCULATED? 0 = AUTOMATIC MODE", "MOFA FACTOR TO EXPLORE WITH VISUALIZATION", "MIN OMICS SHARED PER SAMPLE")

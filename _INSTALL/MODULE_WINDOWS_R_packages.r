@@ -20,6 +20,7 @@ if (file.exists("Package_Windows.tar") == TRUE){
 # Activate renv environment
 cat("Activating renv environment...\n")
 renv::activate()
+# renv::load()
 
 # Show current library path
 cat("📚 Installing into library:\n")
