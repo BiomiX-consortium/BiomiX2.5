@@ -14,7 +14,7 @@ get_default_browser <- function() {
         if (.Platform$OS.type == "windows") {
                 
                 if (browser_analysis == "chrome") {
-                        return("C:/Program Files/Google/Chrome/Application/chrome.exe")
+                        return("C:/Program Files/Google/Chrome/Application/chrome.exe") 
                 } else if (browser_analysis == "firefox") {
                         return("C:/Program Files/Mozilla Firefox/firefox.exe")
                 } else if (browser_analysis == "chromium") {
@@ -54,7 +54,7 @@ get_default_browser <- function() {
 get_top_variable_genes <- function(data, top_n = 500) {
         # Compute variance of each feature
         
-        feature_variances <- apply(data, 2, var)
+        feature_variances <- apply(data, 2, stats::var)
         
         # Get indices of top N most variable genes
         top_genes <- order(feature_variances, decreasing = TRUE)[1:top_n]
@@ -67,7 +67,7 @@ get_top_variable_genes <- function(data, top_n = 500) {
 
 get_top_variable_features <- function(data, top_n = 1000) {
         # Calculate variance for each feature (gene)
-        variances <- apply(data, 2, var, na.rm = TRUE)
+        variances <- apply(data, 2, stats::var, na.rm = TRUE)
         
         # Get indices of the top N most variable features
         top_features <- order(variances, decreasing = TRUE)[1:top_n]
@@ -291,6 +291,7 @@ runShinyApp <- function(numeric_data, metadata) {
                 # Watch for the combined data
                 observe({
                         plot_data <- combined_data()$numeric  # Assume combined_data() provides the numeric data
+                        
                         
                         # Check the number of columns (variables) in the numeric data
                         if (ncol(plot_data) > 1000) {

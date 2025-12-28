@@ -10,8 +10,8 @@
 # MANUAL INPUT
 # library(vroom)
 # args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
+# args[1] <-"C1"
+# args[2] <-"C4"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 # #
 # directory <- args[3]
@@ -38,6 +38,11 @@ library(tidyverse)
 library(DESeq2)
 library(readxl)
 
+library(jsonlite)
+library(tidyverse)
+combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+
+
 directory2 <- paste(directory,"/Transcriptomics/",sep="")
 setwd(directory2)
 
@@ -62,7 +67,7 @@ if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
         }else{
                 Metadata_total <- vroom(DIR_METADATA, delim = "\t", col_names = TRUE)}
 
-COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
 log2FC <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_TRASCRIPTOMICS[1])
 padju <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_TRASCRIPTOMICS[2])
 Gene_panel <- COMMAND_ADVANCED$ADVANCED_OPTION_TRASCRIPTOMICS[3]
@@ -121,6 +126,22 @@ Metadata_total = NULL
 # Check type of gene name used (ENSEMBL or GENE SYMBOL)
 
 Mart<-read.table(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt", sep=""), sep = ",", header=TRUE)
+
+
+# Check for duplicated rownames
+if (any(duplicated(rownames(Matrix)))) {
+  warning("⚠️ Duplicated gene names detected! Duplicates will be removed.")
+  
+  # Optionally, print which ones are duplicated
+  dup_genes <- rownames(Matrix)[duplicated(rownames(Matrix))]
+  message("Duplicated genes: ", paste(unique(dup_genes), collapse = ", "))
+  
+  # Remove duplicated rows (keep first occurrence)
+  genes <- genes[!duplicated(rownames(Matrix))]
+  Matrix <- Matrix[!duplicated(rownames(Matrix)), ]
+  
+}
+
 
 result <- process_gene_annotation(Matrix, genes, directory)
 
@@ -234,6 +255,10 @@ Metadata_Bcell <- generate_heatmap_signature(
           # DGE2$samples <- Metadata$ID
   }
   
+  directory2 <- file.path(directory, "Integration", "INPUT", paste0(Cell_type, "_", args[1], "_vs_", args[2]))
+  setwd(directory2)
+
+
   # Save the outputs
   save_outputs(Metadata, DGE3, directory2, Cell_type, args[1], args[2])
   

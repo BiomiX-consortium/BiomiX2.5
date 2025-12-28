@@ -1,9 +1,5 @@
 #Functions metabolomics pipeline BiomiX_DMA.r
 
-
-
-
-
 #LOAD ANNOTATION FUNCTION
 
 load_annotation <- function(ANNOTATION, i, COMMAND_ADVANCED) {
@@ -383,13 +379,26 @@ run_dge_analysis_annotated <- function(TEST, matrix, Metadata, Cell_type, args, 
   x <- colnames(total) %in% matrix$ID
   total <- total[, !x]
   
+  
+  
+  #Inclusion HMDB
+  total <- total %>%
+    left_join(Mart_metabolome ,
+              by = c("NAME" = "HMDB")) %>%
+    mutate(name = if_else(!is.na(name), name, NAME))
+  
+  colnames(total)[which(colnames(total) == "name")] <- "Name"
+
+  
   total_3 <- total
   colnames(total_3)[colnames(total_3) == "NAME"] <- "NAME.x"
+  
   write.table(total_3, paste0(directory2, "/", Cell_type, "_", args[1], "_vs_", args[2], "_results.tsv"),
               quote = FALSE, row.names = FALSE, sep = "\t")
   
   total$padj <- as.numeric(total$padj)
   total$log2FC <- as.numeric(total$log2FC)
+  
   
   total_min <- total[, c("NAME", "log2FC", "p_val", "padj")]
   total_min <- dplyr::arrange(total_min, padj)
@@ -437,12 +446,12 @@ run_dge_analysis_annotated <- function(TEST, matrix, Metadata, Cell_type, args, 
   
   if (SKIP_ALTI) {
     p <- p + geom_point(data = ALTI, aes(x = log2FC, y = -log10(padj)), color = "red") +
-      geom_text_repel(data = ALTI[1:min(25, nrow(ALTI)), ], aes(x = log2FC, y = -log10(padj), label = NAME),
+      geom_text_repel(data = ALTI[1:min(25, nrow(ALTI)), ], aes(x = log2FC, y = -log10(padj), label = Name),
                       hjust = 0, vjust = 0, size = 3, max.overlaps = 5)
   }
   if (SKIP_BASSI) {
     p <- p + geom_point(data = BASSI, aes(x = log2FC, y = -log10(padj)), color = "blue") +
-      geom_text_repel(data = BASSI[1:min(25, nrow(BASSI)), ], aes(x = log2FC, y = -log10(padj), label = NAME),
+      geom_text_repel(data = BASSI[1:min(25, nrow(BASSI)), ], aes(x = log2FC, y = -log10(padj), label = Name),
                       hjust = 0, vjust = 0, size = 3, max.overlaps = 5)
   }
   

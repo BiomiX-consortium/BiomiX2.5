@@ -1,22 +1,35 @@
 #ADD THE CORRELATION ANALYSIS WITH CLINICAL DATA
+
+
+# MANUAL INPUT
+# # #
+# args = as.list(c("Neutrophils","PAPS"))
+# args[1] <-"C1"
+# args[2] <-"C2"
+# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
+# #
+# directory <- unlist(args[3])
+# Cell_type <- "MOFA_INTEGRATION"
+# renv::load(paste(directory,"_INSTALL",sep="/"))
+
 library(dplyr)
 library(tidyverse)
 library(vroom)
 library(readxl)
 
-# MANUAL INPUT
-# # #
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# args[3] <-"/home/cristia/BiomiX2.4"
-# #
-# directory <- args[3]
-# Cell_type <- "DIABLO_INTEGRATION"
+
+setwd(directory)
+combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
 
 
-COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
+COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
+
+print(COMMAND_MOFA)
+
+
+Cell_type <- COMMAND_MOFA[1,2]
+print(paste("MODE SELECTED:",Cell_type) )
 
 
 NUMERICAL_AVAILABLE = as.character(COMMAND_ADVANCED[1,12]) 
@@ -29,11 +42,18 @@ if (Cell_type == "MOFA_INTEGRATION"){
   
 }
 
-directory <- args[[3]]
+directory <- unlist(args[[3]])
+Cell_type == COMMAND_MOFA[1,2]
+
+print(Cell_type)
+print(Cell_type == "MOFA_INTEGRATION")
+print(files)
 
 for (fil in files){
 
 directory3 <- paste(directory,"/Integration/OUTPUT/",fil,sep="") 
+print(directory3)
+print(directory)
 setwd(directory3)
 print(directory3)
 
@@ -43,10 +63,11 @@ files2<- files2[grep("\\Metabolomics|\\Methylomics|\\Transcriptomics|\\Undefined
 factors<-strsplit(files2, "_")
 factors<-unlist(factors)
 factors<-str_remove(factors,".tsv")
+factors <- unlist(regmatches(factors, gregexpr("\\d+\\.?\\d*", factors))) #Regex to filter only the numeric values
 factors<-unique(as.numeric(factors[!is.na(as.numeric(factors))]))
 
 
-if (factors != 0){
+if (length(factors) != 0){
   
   
   if (Cell_type == "MOFA_INTEGRATION"){
@@ -65,6 +86,7 @@ files<- files[grep("\\Metabolomics|\\Methylomics|\\Undefined|\\Transcriptomics",
 factors<-strsplit(files, "_")
 factors<-unlist(factors)
 factors<-str_remove(factors,".tsv")
+factors <- unlist(regmatches(factors, gregexpr("\\d+\\.?\\d*", factors))) #Regex to filter only the numeric values
 factors<-unique(as.numeric(factors[!is.na(as.numeric(factors))]))
 
 
@@ -104,7 +126,7 @@ if (Cell_type == "MOFA_INTEGRATION"){
 }
 
 
-for (fact in 1:(factors * multiplier)){
+for (fact in c(factors * multiplier)){
   
         Results = matrix(0, nrow= ncol(NUMERICAL) -1 , ncol= 3)
         for (i in 2:ncol(NUMERICAL)){
@@ -187,7 +209,7 @@ if (Cell_type == "MOFA_INTEGRATION"){
 }
 
 
-for (fact in 1:(factors * multiplier)){
+for (fact in c(factors * multiplier)){
         
        BINARY$factors<- as.numeric(FACTORS_WEIGHTS[,fact + 1])
         
@@ -196,14 +218,14 @@ for (fact in 1:(factors * multiplier)){
         means=NULL
         for (i2 in 2:length(BINARY)){
                 print(i2)
-          SLE <-  BINARY[,i2] == "Yes" | BINARY[,i2] == "Present" | BINARY[,i2] == "Past" | BINARY[,i2] == "Male" | BINARY[,i2] == "male" | BINARY[,i2] == "M" | BINARY[,i2] == "1" | BINARY[,i2] == "M" | BINARY[,i2] == "m"
+          SLE <-  BINARY[,i2] == "Yes" | BINARY[,i2] == "yes" | BINARY[,i2] == "Present" | BINARY[,i2] == "Past" | BINARY[,i2] == "Male" | BINARY[,i2] == "male" | BINARY[,i2] == "M" | BINARY[,i2] == "1" | BINARY[,i2] == "M" | BINARY[,i2] == "m" | BINARY[,i2] == "High"
           if (sum(SLE) == 0){
                         SLE = NULL
                         }else{
                                 SLE <- BINARY[SLE,ncol(BINARY)]
                                 }
                 
-                CTRL <- BINARY[,i2] == "No" | BINARY[,i2] == "Female"| BINARY[,i2] == "female"| BINARY[,i2] == "U" | BINARY[,i2] == "0" | BINARY[,i2] == "f"
+                CTRL <- BINARY[,i2] == "No" | BINARY[,i2] == "Female"| BINARY[,i2] == "no"| BINARY[,i2] == "female"| BINARY[,i2] == "U" | BINARY[,i2] == "0" | BINARY[,i2] == "f" | BINARY[,i2] == "Low" 
                 if (sum(CTRL) == 0){ 
                   CTRL = NULL }else{
                                 CTRL <- BINARY[CTRL,ncol(BINARY)]
@@ -244,3 +266,4 @@ for (fact in 1:(factors * multiplier)){
         print(paste("No_significant_factor in ", fil, sep = ""))
 }
 }
+

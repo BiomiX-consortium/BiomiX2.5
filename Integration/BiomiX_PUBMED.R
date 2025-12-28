@@ -1,3 +1,17 @@
+
+
+
+# MANUAL INPUT
+# # #
+# args = as.list(c("Neutrophils","PAPS"))
+# args[1] <-"RA"
+# args[2] <-"CTRL"
+# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
+# directory <- unlist(args[3])
+# Cell_type <- "MOFA_INTEGRATION"
+# renv::load(paste(directory,"_INSTALL",sep="/"))
+
+
 library(vroom)
 library(dplyr)
 library(XML)
@@ -6,15 +20,6 @@ library(stringr)
 library(rentrez)
 library(litsearchr)
 
-
-# MANUAL INPUT
-# # #
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# args[3] <-"/home/cristia/BiomiX2.3"
-# directory <- args[3]
-# Cell_type <- "DIABLO"
 
 COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
 COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
@@ -179,7 +184,8 @@ count_match_in_top_article <- function(nami) {
                 LIST_GENE<- vroom(paste(directory2,"/",files[val], sep=""), delim="\t")
                 LIST_GENE<-LIST_GENE %>% filter(abs_weight>0.50) %>% arrange(desc(abs_weight))
                 #IF there is only peak the query is removed, peak is removed from the total name
-                LIST_GENE$features <-gsub("peak[0-9]*/", "", LIST_GENE$features)
+                LIST_GENE$features <-gsub("^HMDB.*/", "", LIST_GENE$features)
+                LIST_GENE$features <-gsub("^peak[0-9]*/", "", LIST_GENE$features)
                 
                 #Removal peak name
                 if (COMMAND$DATA_TYPE[position_list] == "Metabolomics"){
@@ -191,7 +197,8 @@ count_match_in_top_article <- function(nami) {
                 val<-grep(paste(omik,".*_neg_","*", sep=""), files)
                 LIST_GENE2<-vroom(paste(directory2,"/",files[val], sep=""), delim="\t")
                 LIST_GENE2<-LIST_GENE2 %>% filter(abs_weight>0.50) %>% arrange(desc(abs_weight))
-                LIST_GENE2$features <-gsub("peak[0-9]*/", "", LIST_GENE2$features)
+                LIST_GENE2$features <-gsub("^HMDB.*/", "", LIST_GENE2$features)
+                LIST_GENE2$features <-gsub("^peak[0-9]*/", "", LIST_GENE2$features)
                 
                 #Removal peak name
                 if (COMMAND$DATA_TYPE[position_list] == "Metabolomics"){
@@ -244,8 +251,9 @@ count_match_in_top_article <- function(nami) {
                                         LIST_GENE3$features[value] <- ANNOTATION_LIPIDS$X2[grep(TRUE, out)] 
                                 }
                         }
+                        #THIS STRING REMOVE THE - to be able to run a research without crashing
                         LIST_GENE3_out<- unlist(lapply(lapply(strsplit(as.character(LIST_GENE3$features), split = '-'), function(x) x[c(length(x))]), paste, collapse = '-'))
-                        
+                         #LIST_GENE3_out <-  LIST_GENE3$features  
                 }else{
                         LIST_GENE3_out <-  LIST_GENE3$features     
                         }
@@ -326,7 +334,15 @@ count_match_in_top_article <- function(nami) {
                         print(doi)
                         
                         # Define the list of words you want to count
-                        word_list <- columns_tot
+                        #word_list <- columns_tot
+                        
+                        #New version
+                        escape_regex <- function(x) {
+                          # escape the main regex metacharacters
+                          gsub("([\\^$.|?*+()\\[\\]{}\\\\])", "\\\\\\1", x, perl = TRUE)
+                        }
+                        word_list <- escape_regex(columns_tot)
+                        
                         # Count the occurrences of the words in the text string
                         occurrences <- count_word_occurrences(text, word_list)
                         occurrences <- c(occurrences, id, keywords, doi)

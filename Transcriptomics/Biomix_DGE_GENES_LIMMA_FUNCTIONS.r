@@ -130,7 +130,7 @@ launch_qc_preview <- function(DGE2, Metadata_Bcell, directory, browser_analysis)
         source(file.path(directory, "BiomiX_preview.r"))
         browser_path <- readLines(file.path(directory, "_INSTALL", "CHOISE_BROWSER_pre-view"), n = 1)
         
-        options(browser = browser_path)
+        options(browser = get_default_browser())
         message("Pre QC data visualization. If the browser does not open automatically, copy and paste the link into a browser.")
         message("Once the QC window opens, apply your filters and click 'close app' to continue.")
         message("NOTE: If the browser does not open, set up the correct path in CHOISE_BROWSER_pre-view.")
@@ -464,8 +464,9 @@ generate_mofa_input <- function(directory, Cell_type, args, NORMALIZATION, GENE_
         print(nrow(normalizzati))
         
         #================ VARIANCE FILTERING ================
-        
+        samples<-colnames(normalizzati)
         normalizzati <- as.data.frame(lapply(normalizzati, as.numeric))
+        colnames(normalizzati) <- samples
         varianze <- rowVars(as.matrix(normalizzati), na.rm = TRUE)
         # varianze <- apply(as.matrix(normalizzati), 1, var) #For some reason not working on Windows terminal
 
@@ -623,11 +624,17 @@ run_limma_analysis <- function(DGE3, Metadata, Confounders_design, comparison) {
         
         # Set up design matrix
         design <- model.matrix(Confounders_design$design_formula, data = Metadata)
+
         
-        contr.matrix <- makeContrasts(
-                CTRLvsCONDITION = paste(colnames(design)[1], "-", colnames(design)[2]),
-                levels = design
-        )
+        
+        # Dynamically build contrast string
+        contrast_string <- paste0("CTRLvsCONDITION = ", colnames(design)[1], " - ", colnames(design)[2])
+        
+        # Evaluate safely
+        contr.matrix <- eval(parse(text = paste0(
+          "makeContrasts(", contrast_string, ", levels = design)"
+        )))
+        
         
         vfit <- lmFit(DGE3, design)
         vfit <- contrasts.fit(vfit, contrasts = contr.matrix)

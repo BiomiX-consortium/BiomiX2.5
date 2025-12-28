@@ -27,12 +27,12 @@ library("rlist");
 library("readxl");
 
 # # #MANUAL INPUT
-args = as.list(c("BLymphocytes","SJS"))
-args[2] <-"unmutated"
-args[1] <-"mutated"
-args[3] <- "C:/Users/crist/Desktop/BiomiX2.5"
-
-directory <-args[3]
+# args = as.list(c("BLymphocytes","SJS"))
+# args[2] <-"CTRL"
+# args[1] <-"RA"
+# args[3] <- "C:/Users/crist/Desktop/BiomiX2.5"
+# 
+# directory <-args[3]
 # 
 
 int_method <- "NEMO"

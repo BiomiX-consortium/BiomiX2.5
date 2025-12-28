@@ -1,5 +1,20 @@
 #upload libraries
 
+#use_python("/usr/bin/python3", required=TRUE)
+# use_condaenv("BiomiX-env", required = TRUE) 
+# reticulate::py_config()
+
+#
+# # #MANUAL INPUT
+# args = as.list(c("Neutrophils","PAPS"))
+# args[1] <-"RA"
+# args[2] <-"CTRL"
+# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
+# 
+# directory <-args[3]
+# Cell_type <- "MOFA_INTEGRATION"
+# renv::load(paste(directory,"_INSTALL",sep="/"))
+
 library(data.table)
 library(vroom)
 library(dplyr)
@@ -9,21 +24,8 @@ library(caret)
 library(rlist)
 library(MOFA2)
 library(reticulate)
-#use_python("/usr/bin/python3", required=TRUE)
-# use_condaenv("BiomiX-env", required = TRUE) 
-# reticulate::py_config()
-
-#
-# # #MANUAL INPUT
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"PTB"
-# args[2] <-"HC"
-# args[3] <-"/home/cristia/BiomiX2.2"
 # 
-# directory <-args[3]
 
-# 
-Cell_type <- "MOFA"
 
 MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
 myList <- list()
@@ -33,6 +35,7 @@ COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t"
 COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
 Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
 Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
+Cell_type == COMMAND_MOFA[1,2]
 
 directory2 <- paste(directory,"/Metabolomics",sep="")
 
@@ -106,7 +109,7 @@ serum_metabolomics<- reshape(data=list[[2]], idvar="CONDITION",
                              varying = colnames(list[[2]])[3:ncol(list[[2]])],
                              v.name=c("value"),
                              times= colnames(list[[2]])[3:ncol(list[[2]])],
-                             new.row.names = 1:1000000,
+                             new.row.names = 1:100000000,
                              direction="long")
 colnames(serum_metabolomics)[3] <- "feature"
 serum_metabolomics$view <- paste(mer,"_Metabolomics", sep="")
@@ -293,6 +296,7 @@ if(COMMAND$DATA_TYPE[i] == "Methylomics"){
 
 #### CHOISE MERGING ----
 
+
 Serum_Urine_Whole_Bcell_Methyl <-rbindlist(myList)
 Serum_Urine_Whole_Bcell_Methyl<- as.data.table(Serum_Urine_Whole_Bcell_Methyl)
 
@@ -384,6 +388,9 @@ train_opts$freqELBO <- 5
 MOFAobject@samples_metadata[["condition"]] <- groups$group
 
 
+
+
+
 MOFAobject <- prepare_mofa(
   object = MOFAobject,
   data_options = data_opts,
@@ -392,9 +399,10 @@ MOFAobject <- prepare_mofa(
 )
 
 outfile = file.path(getwd(),"model.hdf5")
+
+
 #outfile = "/home/cristia/R/x86_64-pc-linux-gnu-library/4.2/MOFA2/extdata/model.hdf5"
 MOFAobject.trained <- run_mofa(MOFAobject, outfile, use_basilisk = FALSE)
-
 
 
 #DOWNSTREAM ANALYSIS
@@ -506,23 +514,6 @@ D$standard_deviation <- stdv
 write.table(D,file=paste("MOFA_SEPARATION", "_", args[1] ,"_vs_", args[2],"_",n_factors,"_factors.tsv", sep =""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
 
 
-#REMOVAL MOFA TAG FROM TRANSCRIPTOMICS
-if(sum(COMMAND$DATA_TYPE == "Transcriptomics") > 1){
-print("Cleaning transcriptomics gene name in position:")
-position <- which(COMMAND$DATA_TYPE %in% "Transcriptomics")
-print(position)
-
-for (i in position) {       
-  l<-list()
-  x<-as.data.frame(myList[i])
-  l[[1]]<- unique(x$view)
-  
-  
-features_names(model)[[l[[1]]]] <- gsub(paste("_", l[[1]] , sep=""), "" ,features_names(model)[[l[[1]]]])
-
-head(features_names(model)[[l[[1]]]])
-}
-}
 
 #TEST
 n=1
@@ -535,13 +526,32 @@ for(i in 1:length(COMMAND$INTEGRATION)){
     if(COMMAND$DATA_TYPE[i] == "Metabolomics"){
       print("Cleaning metabolomics metabolite position:")
       print(i)
-      o<- list("Serum_metabolomics" = get(paste("INPUT",i,"_visual",sep=""))[-1:-2])
-      names(o) <- Views[n]
+      o<- list("Metabolomics" = get(paste("INPUT",i,"_visual",sep=""))[-1:-2])
+      names(o) <- Views[i]
       #print(o)
-      features_names(model)[Views[n]] <- o
-      n = n+1
+      features_names(model)[Views[i]] <- o
       print("OK")
     }
+    
+    if(COMMAND$DATA_TYPE[i] == "Transcriptomics"){
+      print("Cleaning transcriptomics gene position:")
+      print(i)
+      o<- list("Transcriptomics" = get(paste("INPUT",i,"_visual",sep="")))
+      names(o) <- Views[i]
+      #print(o)
+      features_names(model)[Views[i]] <- o
+      print("OK")
+    }
+    if(COMMAND$DATA_TYPE[i] == "Methylomics"){
+      print("Cleaning methylomics cpg position:")
+      print(i)
+      o<- list("Methylomics" = get(paste("INPUT",i,"_visual",sep="")))
+      names(o) <- Views[i]
+      #print(o)
+      features_names(model)[Views[i]] <- o
+      print("OK")
+    }
+    
     #       else{
     #   print(n)
     #   o<- list("Serum_metabolomics" = get(paste("INPUT",i,"_visual",sep="")))
@@ -559,7 +569,7 @@ for(i in 1:length(COMMAND$INTEGRATION)){
 # features_names(model)["Urine_metabolomics"] <- list("Urine_metabolomics" = urine_metabolomics_EASY[-1:-2])
 # features_names(model)["Methylomics_WB"] <- list("Methylomics_WB" = Methylome_WB_EASY)
 #here we can add the gene name associated to each CpG island if required
-
+features_names(model)
 
 
 
@@ -638,34 +648,20 @@ if (n_factors >= COMMAND_MOFA[4,2]){
 
 #Visualisation of feature weights
 
-for(i in Views) {
-  
-  x<-plot_weights(model,
-                  view = i,
-                  factor = as.numeric(focus_factor),
-                  nfeatures = 10,     # Number of features to highlight
-                  scale = T,          # Scale weights from -1 to 1
-                  abs = F, # Take the absolute value?
-                  text_size = 3,
-  )
-  
-  print(x)
-}
+# for(i in Views) {
+#   
+#   x<-plot_weights(model,
+#                   view = i,
+#                   factor = as.numeric(focus_factor),
+#                   nfeatures = 10,     # Number of features to highlight
+#                   scale = T,          # Scale weights from -1 to 1
+#                   abs = F, # Take the absolute value?
+#                   text_size = 3,
+#   )
+#   
+#   print(x)
+# }
 
-#Visualisation of feature top weights
-
-for(i in Views) {
-        
-        x<-plot_top_weights(model,
-                            view = i,
-                            factor =  as.numeric(focus_factor),
-                            nfeatures = 35
-        )
-        print(x)
-}
-
-
-dev.off()
 
 #ADD SAVING OF THE TOP WEIGHTS
 
@@ -751,71 +747,75 @@ if (length(nice) != 0){
         
         
         }
+        
+        #Visualisation of feature top weights
+        
+        for(i in Views) {
+          
+          x<-plot_top_weights(model,
+                              view = i,
+                              factor =  y,
+                              nfeatures = 35
+          )
+          print(x)
+        }
+        
+        
+        #Heatmaps
+        
+        for(i in Views) {
+          
+          x <- plot_data_heatmap(model,
+                                 view = i,         # view of interest
+                                 factor =  y,             # factor of interest
+                                 features = 20,          # number of features to plot (they are selected by weight)
+                                 
+                                 # extra arguments that are passed to the `pheatmap` function
+                                 cluster_rows = TRUE, cluster_cols = TRUE,
+                                 show_rownames = TRUE, show_colnames = TRUE, annotation_samples = "condition")
+          
+          
+          
+          x <- x + 
+            scale_color_manual(values=t) +
+            scale_fill_manual(values=t)
+          
+          
+          print(x)
+          
+          
+        }
+        
+        
+        
+        #Scatter plots
+        
+        for(i in Views) {
+          
+          x<- plot_data_scatter(model,
+                                view = i,         # view of interest
+                                factor =  y,             # factor of interest
+                                features = 10,           # number of features to plot (they are selected by weight)
+                                add_lm = TRUE,          # add linear regression
+                                color_by = "condition"
+          )
+          
+          x <- x + 
+            scale_color_manual(values=t) +
+            scale_fill_manual(values=t)
+          
+          print(x)
+          
 
+        
+        }
 
         }
-        dev.off()
+  
 }
         
-
-
-#Visualisation of patterns in the input data
-
-
-
-pdf(file= paste("MOFA", "_", args[1] ,"_vs_", args[2], "_2",".pdf", sep =""), width = 20, height = 9)
-
-
-#Heatmaps
-
-for(i in Views) {
-  
-  x <- plot_data_heatmap(model,
-                         view = i,         # view of interest
-                         factor =  as.numeric(focus_factor),             # factor of interest
-                         features = 20,          # number of features to plot (they are selected by weight)
-                         
-                         # extra arguments that are passed to the `pheatmap` function
-                         cluster_rows = TRUE, cluster_cols = TRUE,
-                         show_rownames = TRUE, show_colnames = TRUE, annotation_samples = "condition")
-  
-  
-  
-  x <- x + 
-    scale_color_manual(values=t) +
-    scale_fill_manual(values=t)
-  
-  
-  print(x)
-  
-  
-}
-
-
-
-#Scatter plots
-
-for(i in Views) {
-  
-  x<- plot_data_scatter(model,
-                        view = i,         # view of interest
-                        factor =  as.numeric(focus_factor),             # factor of interest
-                        features = 10,           # number of features to plot (they are selected by weight)
-                        add_lm = TRUE,          # add linear regression
-                        color_by = "condition"
-  )
-  
-  x <- x + 
-    scale_color_manual(values=t) +
-    scale_fill_manual(values=t)
-
-  print(x)
-  
-}
-
-
 dev.off()
-#dev.off()
+
 
 
 #IF % explained by last factor < 1 % add one penality

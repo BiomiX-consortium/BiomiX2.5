@@ -1,3 +1,19 @@
+# MANUAL INPUT
+# args = as.list(c("Neutrophils","PAPS"))
+# args[1] <-"RA"
+# args[2] <-"CTRL"
+# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
+# directory <- unlist(args[3])
+# Cell_type <- "MOFA_INTEGRATION"
+# renv::load(paste(directory,"_INSTALL",sep="/"))
+# directory <-args[3]
+# COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
+# COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
+# COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
+# Cell_type <- "MOFA_INTEGRATION"
+# Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
+
+
 
 library(enrichR)
 library(vroom)
@@ -5,20 +21,6 @@ library(metpath)
 library(tidyverse)
 library(dplyr)
 
-# MANUAL INPUT
-# args = as.list(c("BLymphocytes","SLE"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-
-# 
-# directory <-args[3]
-# 
-# COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-# COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
-# COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-# Cell_type <- "DIABLO_INTEGRATION"
-# Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
 
 padj_pathways <- as.numeric(COMMAND_ADVANCED[1,11]) 
 n_pathways <- as.numeric(COMMAND_ADVANCED[2,11]) 
@@ -51,6 +53,7 @@ files2<- files2[grep("\\Metabolomics|\\Methylomics|\\Transcriptomics", files2)]
 factors<-strsplit(files2, "_")
 factors<-unlist(factors)
 factors<-str_remove(factors,".tsv")
+factors <- unlist(regmatches(factors, gregexpr("\\d+\\.?\\d*", factors))) #Regex to filter only the numeric values
 factors<-unique(as.numeric(factors[!is.na(as.numeric(factors))]))
 
 #numb <- factors[1]
@@ -74,7 +77,9 @@ for (omik in (nam)){
         LIST_GENE<- vroom(paste(directory2,"/",files[val], sep=""), delim="\t")
         LIST_GENE<-LIST_GENE %>% filter(abs_weight>Contribution_threshold) %>% arrange(desc(abs_weight))
         #IF there is only peak the query is removed, peak is removed from the total name
-        LIST_GENE$features <-gsub("peak[0-9]*/", "", LIST_GENE$features)
+        LIST_GENE$features <- gsub("^HMDB[^/]*\\/", "", LIST_GENE$features)
+        LIST_GENE$features <- gsub("^peak[0-9]*\\/", "", LIST_GENE$features)
+        #LIST_GENE$features <-gsub("peak[0-9]*/", "", LIST_GENE$features)
         #Removal peak name
         sav<-grep("peak[0-9]*", LIST_GENE$features)
         if(length(sav) == 0){
@@ -88,19 +93,27 @@ for (omik in (nam)){
                 LIST_GENE<- LIST_GENE[-sav,]}
         
         if(nam_adv[iter] == "Metabolomics"){
-        annot<-vroom(paste(directory,"/Metabolomics/OUTPUT/", omik, args[1],"_vs_",args[2], "/", omik, args[1],"_vs_",args[2],"_results.tsv", sep = ""), delim = "\t")
+        annot<-vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/Metabolome_reference_ID.tsv", sep=""), delim = "\t")
         LIST_GENE<-LIST_GENE[!LIST_GENE$features == "NA",]
         LIST_GENE<-LIST_GENE$features
-        if("Name" %in% colnames(annot)){ 
-                LIST_GENE<-annot[match(LIST_GENE, annot$Name),]
-                LIST_GENE<-LIST_GENE$HMDB}
+        if("name" %in% colnames(annot)){ 
+                        # identify which entries are already HMDB IDs
+                        is_hmdb <- grepl("^HMDB\\d+$", LIST_GENE)
+                        # for those that are not HMDB IDs, try to match names to annotation table
+                        matches <- match(LIST_GENE[!is_hmdb], annot$name)
+                        # replace only where matches exist
+                        LIST_GENE[!is_hmdb] <- as.vector(annot$HMDB[matches[!is.na(matches)]])
+                        
+        }
         
         }        
         
         val<-grep(paste(omik,".*_neg_","*", sep=""), files)
         LIST_GENE2<-vroom(paste(directory2,"/",files[val], sep=""), delim="\t")
         LIST_GENE2<-LIST_GENE2 %>% filter(abs_weight>Contribution_threshold) %>% arrange(desc(abs_weight))
-        LIST_GENE2$features <-gsub("peak[0-9]*/", "", LIST_GENE2$features)
+        LIST_GENE2$features <- gsub("^HMDB[^/]*\\/", "", LIST_GENE2$features)
+        LIST_GENE2$features <- gsub("^peak[0-9]*\\/", "", LIST_GENE2$features)
+        #LIST_GENE2$features <-gsub("peak[0-9]*/", "", LIST_GENE2$features)
         #Removal peak name
         sav<-grep("peak[0-9]*", LIST_GENE2$features)
         if(length(sav) == 0){
@@ -113,12 +126,17 @@ for (omik in (nam)){
                 LIST_GENE2<- LIST_GENE2[-sav,]}
         
         if(nam_adv[iter] == "Metabolomics"){
-                annot<-vroom(paste(directory,"/Metabolomics/OUTPUT/", omik, args[1],"_vs_",args[2], "/", omik, args[1],"_vs_",args[2],"_results.tsv", sep = ""), delim = "\t")
+                annot<-vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/Metabolome_reference_ID.tsv", sep=""), delim = "\t")
                 LIST_GENE2<-LIST_GENE2[!LIST_GENE2$features == "NA",]
                 LIST_GENE2<-LIST_GENE2$features
-                if("Name" %in% colnames(annot)){ 
-                        LIST_GENE2<-annot[match(LIST_GENE2, annot$Name),]
-                        LIST_GENE2<-LIST_GENE2$HMDB}
+                if("name" %in% colnames(annot)){ 
+                        # identify which entries are already HMDB IDs
+                        is_hmdb <- grepl("^HMDB\\d+$", LIST_GENE2)
+                        # for those that are not HMDB IDs, try to match names to annotation table
+                        matches <- match(LIST_GENE2[!is_hmdb], annot$name)
+                        # replace only where matches exist
+                        LIST_GENE2[!is_hmdb] <- as.vector(annot$HMDB[matches[!is.na(matches)]])
+                }
                 
         }        
         

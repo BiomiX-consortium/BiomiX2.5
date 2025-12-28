@@ -5,8 +5,8 @@ cat("\n\n\n\n\n          /////////      ///    /////////    ///       ///     //
 
 # #MANUAL INPUT
 # args = as.list(c("BLymphocytes","SLE"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
+# args[1] <-"C1"
+# args[2] <-"C2"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 
 
@@ -26,7 +26,7 @@ print("Information acquired, running the analysis")
 #}
 
 #directory <- "/home/cristia/Scrivania/PhD/Bioinfo/Article_MULTI_BETA"
-directory <- args[[3]]
+directory <- unlist(args[[3]])
 setwd(paste(directory,"_INSTALL",sep="/"))
 renv::load(paste(directory,"_INSTALL",sep="/"))
 
@@ -83,6 +83,10 @@ for (i in position){
                 cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
                 gc()
         }else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
+          
+                #The following block allows you to re-run the single omics pipelines to generate the normalised data
+                #Each time you run and integration analysis. It is quite time consuming, but gives stability.
+          
                 STATISTICS <- "NO"
                 Cell_type <- COMMAND$LABEL[i]
                 cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
@@ -92,8 +96,10 @@ for (i in position){
                 directory2 <- paste(directory,"/Undefined/INPUT",sep="")
                 #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
                 #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-                source(paste(directory,"/Undefined/BiomiX_Undefined.r",sep=""))
-                cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+                #source(paste(directory,"/Undefined/BiomiX_Undefined.r",sep=""))
+                #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+                cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
+                
                 gc()
                 
         }
@@ -143,8 +149,9 @@ if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
         directory2 <- paste(directory,"/Transcriptomics/INPUT",sep="")
         #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
         #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-        source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
-        cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+        #source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
+        #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+        cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
         gc()
 }
 }
@@ -171,7 +178,7 @@ for (i in position){
         iterations = iterations + 1
         selection_samples = COMMAND$SELECTION[i] # TO ADD
         #purity_filter =COMMAND$PURITY[i] #TO ADD
-        directory2 <- paste(directory,"/Transcriptomics/INPUT_PRECISESADS",sep="")
+        directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
         files <- grep("MATRIX*",list.files(directory2),value=TRUE)
         files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
         source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
@@ -185,11 +192,12 @@ for (i in position){
                 iterations = iterations + 1
                 selection_samples = COMMAND$SELECTION[i] # TO ADD
                 #purity_filter =COMMAND$PURITY[i] #TO ADD
-                directory2 <- paste(directory,"/Transcriptomics/INPUT_PRECISESADS",sep="")
+                directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
                 files <- grep("MATRIX*",list.files(directory2),value=TRUE)
                 files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-                source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
-                cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+                #source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
+                #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+                cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
                 gc() 
         }
 }
@@ -211,7 +219,7 @@ for (i in position){
         iterations = iterations + 1
         selection_samples = COMMAND$SELECTION[i] # TO ADD
         #purity_filter =COMMAND$PURITY[i] #TO ADD
-        directory2 <- paste(directory,"/Transcriptomics/INPUT_PRECISESADS",sep="")
+        directory2 <- paste(directory,"/Methylomics/INPUT",sep="")
         files <- grep("MATRIX*",list.files(directory2),value=TRUE)
         files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
         source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
@@ -225,11 +233,12 @@ for (i in position){
                 iterations = iterations + 1
                 selection_samples = COMMAND$SELECTION[i] # TO ADD
                 #purity_filter =COMMAND$PURITY[i] #TO ADD
-                directory2 <- paste(directory,"/Transcriptomics/INPUT_PRECISESADS",sep="")
+                directory2 <- paste(directory,"/Methylomics/INPUT",sep="")
                 files <- grep("MATRIX*",list.files(directory2),value=TRUE)
                 files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-                source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
-                cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+                #source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
+                #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+                cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
                 gc()
         }
 }
@@ -385,93 +394,171 @@ output<-dir(path = paste(directory,"/","Clinical_data", "/OUTPUT/",sep =""), pat
 
 cat("\n\n\n\n\n file saving complete ^-^")
 
-matr<-data.frame(c(17:2))
-matr[1:3,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_TRASCRIPTOMICS
-matr[1:3,1]<-c("LOG2FC_TRANSCRIPTOMICS", "P.ADJ_TRANSCRIPTOMICS", "GENE_PANEL_FILE")
-matr[4:6,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS
-matr[4:6,1]<-c("LOG2FC_METABOLOMICS", "P.ADJ_METABOLOMICS", "CPU_USED")
-matr[7:9,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METHYLOMICS
-matr[7:9,1]<-c("LOG2FC_METHYLOMICS", "P.ADJ_METHYLOMICS", "ARRAY_TYPE")
-matr[10:12,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_SUBGROUPING
-matr[10:12,1]<-c("PANEL POSITIVITY WITH N°GENES WITHIN THE PANEL WITH Z-SCORE > 2", "PANEL POSITIVITY WITH N°GENES WITHIN THE PANEL WITH Z-SCORE > 1", "REMOVE CONTROL POSITIVE FOR GENE PANEL?")
-matr[13:15,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_CLUSTERING_OPTIONS
-matr[13:15,1]<-c("CLUSTERING DISTANCE", "CLUSTERING METHOD", "N° GENES TO VISUALIZE IN THE HEATMAP?")
-matr[16,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3]
-matr[16,1]<-c("N° MOFA INPUT FEATURES")
 
 
-matr_2<-data.frame(c(30:2))
-matr_2[1:2,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[1:2]
-matr_2[1:2,1]<-c("LEVEL_ANNOTATION_METABOLOMICS_DATASET?", "IF_ANNOTATED_WHICH_TYPE_OF ANNOTATION?")
-matr_2[3:5,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1
-matr_2[3:5,1]<-c("ION_MODE_ONLY_MS1_MODE", "NEURAL_MODE? _ONLY_MS1_MODE", "TOLERANCE_IN_PPM_ONLY_MS1_MODE")
-matr_2[6:8,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1_2
-matr_2[6:8,1]<-c("POSITIVE_ADDUCTS_ONLY_MS1_MODE", "NEGATIVE_ADDUCTS_ONLY_MS1_MODE", "DATABASE_FOR_MS1_ANNOTATION_ONLY_MS1_MODE")
-matr_2[9:11,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX
-matr_2[9:11,1]<-c("INDEXING_1", "INDEXING_2", "INDEXING_3")
-matr_2[12:14,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES
-matr_2[12:14,1]<-c("FILE_MS1_ANNOTATION_INDEXING_1_ONLY_MS1_MODE", "FILE_MS1_ANNOTATION_INDEXING_2_ONLY_MS1_MODE", "FILE_MS1_ANNOTATION_INDEXING_3_ONLY_MS1_MODE")
-matr_2[15:17,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2
-matr_2[15:17,1]<-c("TOLERANCE PPM MATCH MS1 MS2 PEAKS", "RETENTION TIME MATCH MS1 MS2", "MS2 DATABASE ANNOTATION PRIORITY")
-matr_2[18,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3[1]
-matr_2[18,1]<-c("ION_MODE_ONLY_MS1-2_MODE")
-matr_2[19:21,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2
-matr_2[19:21,1]<-c("POSITIVE_ADDUCTS__MS1-2_MODE", "NEGATIVE_ADDUCTS__MS1-2_MODE", "TYPE LC COLUMN")
-matr_2[22:23,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_4[1:2]
-matr_2[22:23,1]<-c("DATABASE_FOR_MS1_ANNOTATION_ONLY_MS1-2_MODE", "TOLERANCE_IN_PPM_ONLY_MS1-2_MODE")
-matr_2[24:26,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX
-matr_2[24:26,1]<-c("FILE_MS1_ANNOTATION_INDEXING_1_ONLY_MS1-2_MODE", "FILE_MS1_ANNOTATION_INDEXING_2_ONLY_MS1-2_MODE", "FILE_MS1_ANNOTATION_INDEXING_3_ONLY_MS1-2_MODE")
-matr_2[27:29,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2
-matr_2[27:29,1]<-c("FILE_MS1_ANNOTATION_INDEXING_1_ONLY_MS1-2_MODE", "FILE_MS1_ANNOTATION_INDEXING_2_ONLY_MS1-2_MODE", "FILE_MS1_ANNOTATION_INDEXING_3_ONLY_MS1-2_MODE")
-matr_2[30,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY[1]
-matr_2[30,1]<-c("DIRECTORY_TO_MS2_FILES")
+# ---------- HELPERS ----------
+
+make_param_table <- function(names, values) {
+  data.frame(
+    Parameter = names,
+    Value = values,
+    stringsAsFactors = FALSE
+  )
+}
+
+write_section <- function(section_title, table = NULL) {
+  write(section_title, file = out_file, append = TRUE)
+  if (!is.null(table)) {
+    write.table(
+      table, file = out_file, append = TRUE,
+      row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE
+    )
+  }
+}
+
+# ---------- BUILD PARAMETER TABLES ----------
+
+matr <- make_param_table(
+  names = c(
+    "LOG2FC_TRANSCRIPTOMICS", "P.ADJ_TRANSCRIPTOMICS", "GENE_PANEL_FILE",
+    "LOG2FC_METABOLOMICS", "P.ADJ_METABOLOMICS", "CPU_USED",
+    "LOG2FC_METHYLOMICS", "P.ADJ_METHYLOMICS", "ARRAY_TYPE",
+    "PANEL POSITIVITY WITH N°GENES WITHIN THE PANEL WITH Z-SCORE > 2",
+    "PANEL POSITIVITY WITH N°GENES WITHIN THE PANEL WITH Z-SCORE > 1",
+    "REMOVE CONTROL POSITIVE FOR GENE PANEL?",
+    "CLUSTERING DISTANCE", "CLUSTERING METHOD", "N° GENES TO VISUALIZE IN THE HEATMAP?",
+    "N° MOFA INPUT FEATURES"
+  ),
+  values = c(
+    COMMAND_ADVANCED$ADVANCED_OPTION_TRASCRIPTOMICS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METHYLOMICS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_SUBGROUPING,
+    COMMAND_ADVANCED$ADVANCED_OPTION_CLUSTERING_OPTIONS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3]
+  )
+)
+
+matr_2 <- make_param_table(
+  names = c(
+    "LEVEL_ANNOTATION_METABOLOMICS_DATASET?",
+    "IF_ANNOTATED_WHICH_TYPE_OF_ANNOTATION?",
+    "ION_MODE_ONLY_MS1_MODE", "NEURAL_MODE_ONLY_MS1_MODE", "TOLERANCE_IN_PPM_ONLY_MS1_MODE",
+    "POSITIVE_ADDUCTS_ONLY_MS1_MODE", "NEGATIVE_ADDUCTS_ONLY_MS1_MODE", "DATABASE_FOR_MS1_ANNOTATION_ONLY_MS1_MODE",
+    "INDEXING_1", "INDEXING_2", "INDEXING_3",
+    "FILE_MS1_ANNOTATION_INDEXING_1_ONLY_MS1_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_2_ONLY_MS1_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_3_ONLY_MS1_MODE",
+    "TOLERANCE_PPM_MATCH_MS1_MS2_PEAKS", "RETENTION_TIME_MATCH_MS1_MS2",
+    "MS2_DATABASE_ANNOTATION_PRIORITY",
+    "ION_MODE_ONLY_MS1-2_MODE",
+    "POSITIVE_ADDUCTS__MS1-2_MODE", "NEGATIVE_ADDUCTS__MS1-2_MODE", "TYPE_LC_COLUMN",
+    "DATABASE_FOR_MS1_ANNOTATION_ONLY_MS1-2_MODE", "TOLERANCE_IN_PPM_ONLY_MS1-2_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_1_ONLY_MS1-2_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_2_ONLY_MS1-2_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_3_ONLY_MS1-2_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_1_ONLY_MS1-2_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_2_ONLY_MS1-2_MODE",
+    "FILE_MS1_ANNOTATION_INDEXING_3_ONLY_MS1-2_MODE",
+    "DIRECTORY_TO_MS2_FILES"
+  ),
+  values = c(
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[1:2],
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1_2,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3[1],
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_4[1:2],
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY[1]
+  )
+)
+
+matr_3 <- make_param_table(
+  names = c(
+    "FILTERING_METADATA_1", "TYPE_OF_DATA_1", "THRESHOLD_OR_NAME_1",
+    "FILTERING_METADATA_2", "TYPE_OF_DATA_2", "THRESHOLD_OR_NAME_2",
+    "FILTERING_METADATA_3", "TYPE_OF_DATA_3", "THRESHOLD_OR_NAME_3",
+    "FILTERING_METADATA_4", "TYPE_OF_DATA_4", "THRESHOLD_OR_NAME_4"
+  ),
+  values = c(
+    COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_1,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_2,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_3,
+    COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_4
+  )
+)
+
+matr_4 <- make_param_table(
+  names = c(
+    "MAX_ITERATION", "CONVERGENCE_SPEED", "THRESHOLD_CONTRIBUTION_WEIGHT",
+    "TYPE_OF_RESEARCH", "N°_OF_ARTICLES",
+    "N°_TOP_CONTRIBUTORS_TO_SEARCH_IN_PUBMED",
+    "N°_KEYWORDS_EXTRACTED_BY_THE_KEYWORD_GENERATOR",
+    "P.ADJ_THRESHOLD_PATHWAY", "N°_OF_PATHWAY_TO_VISUALIZE",
+    "NUMERIC_CLINICAL_DATA_UPLOADED?", "BINARY_CLINICAL_DATA_UPLOADED)",
+    "NUMERIC_CLINICAL_DATA_FILE?", "BINARY_CLINICAL_DATA_FILE",
+    "SNF_N°Neighbours", "SNF_Variance_affinity_Matrix","SNF_N°Iteration",
+    "NEMO_N°Neighbours", "NEMO_Variance_affinity_Matrix",
+    "SNF_NEMO_Enrichment_Variable", "SNF_NEMO_Survival_Variable", "SNF_NEMO_Ground_truth_variable",
+    "SNF_NEMO_Max_cluster_expected", "SNF_NEMO_N°feature_heatmap", "SNF_NEMO_N°input_features",
+    "DIABLO_Design_matrix_path", "Diablo_features_selection?", "Diablo_N°iterations"
+    
+  ),
+  values = c(
+    COMMAND_ADVANCED$ADVANCED_OPTION_MOFA,
+    COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[1:2],
+    COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY_2[1:2],
+    COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_PATHWAY[1:2],
+    COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_CLINICAL,
+    COMMAND_ADVANCED$ADVANCED_OPTION_CLINIC_DATA_DIRECTORY,
+    COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN[1],
+    COMMAND_ADVANCED$ADVANCED_OPTION_DIABLO_OPTIONS[1:2]
+  )
+)
+
+# ---------- OUTPUT DIRECTORY ----------
+
+dir_out <- file.path(directory, "Report_parameters")
+dir.create(dir_out, showWarnings = FALSE, recursive = TRUE)
 
 
-matr_3<-data.frame(c(12:2))
-matr_3[1:3,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_1
-matr_3[1:3,1]<-c("FILTERING_METADATA_1", "TYPE_OF_DATA_1", "THRESHOLD_OR_NAME_1")
-matr_3[4:6,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_2
-matr_3[4:6,1]<-c("FILTERING_METADATA_2", "TYPE_OF_DATA_2", "THRESHOLD_OR_NAME_2")
-matr_3[7:9,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_3
-matr_3[7:9,1]<-c("FILTERING_METADATA_3", "TYPE_OF_DATA_3", "THRESHOLD_OR_NAME_3")
-matr_3[10:12,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_METADATA_FILTERING_4
-matr_3[10:12,1]<-c("FILTERING_METADATA_4", "TYPE_OF_DATA_4", "THRESHOLD_OR_NAME_4")
+library(openxlsx)
 
+excel_file <- file.path(
+  dir_out,
+  paste0(
+    "Report_", args[1], "_vs_", args[2], "_",
+    format(Sys.time(), "%Y%m%d_%H%M"),
+    ".xlsx"
+  )
+)
 
-matr_4<-data.frame(c(13:2))
-matr_4[1:3,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_MOFA
-matr_4[1:3,1]<-c("MAX_ITERATION", "CONVERGENCE_SPEED", "THRESHOLD_CONTRIBUTION_WEIGHT")
-matr_4[4:5,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[1:2]
-matr_4[4:5,1]<-c("TYPE_OF_RESEARCH", "N°_OF_ARTICLES")
-matr_4[6:7,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[1:2]
-matr_4[6:7,1]<-c("N°_TOP_CONTRIBUTORS_TO_SEARCH_IN_PUBMED", "N°_KEYWORDS_EXTRACTED_BY_THE_KEYWORD_GENERATOR")
-matr_4[8:9,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_PATHWAY[1:2]
-matr_4[8:9,1]<-c("P.ADJ_THRESHOLD_PATHWAY", "N°_OF_PATHWAY_TO_VISUALIZE")
-matr_4[10:11,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_CLINICAL[1:2]
-matr_4[10:11,1]<-c("NUMERIC_CLINICAL_DATA_UPLOADED?", "BINARY_CLINICAL_DATA_UPLOADED")
-matr_4[12:13,2]<-COMMAND_ADVANCED$ADVANCED_OPTION_CLINIC_DATA_DIRECTORY[1:2]
-matr_4[12:13,1]<-c("NUMERIC_CLINICAL_DATA_FILE?", "BINARY_CLINICAL_DATA_FILE")
+wb <- createWorkbook()
 
-dir.create(path =  paste(directory,"/","Report_parameters/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-line="#PARAMETERS OMICS INPUT#"
-write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE)
-write.table(COMMAND[,], file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE , row.names = F)
-line="#PARAMETERS INTEGRATION#"
-write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE)
-COMMAND_MOFA[,1]<-c("TYPE_INTEGRATION", "MULTIOMICS INTEGRATION?", "N° MOFA FACTOR CALCULATED? 0 = AUTOMATIC MODE", "MOFA FACTOR TO EXPLORE WITH VISUALIZATION", "MIN OMICS SHARED PER SAMPLE")
-write.table(COMMAND_MOFA, file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE, col.names = F, row.names = F)
-line="#ADVANCED OPTION PARAMETER (GENERAL)#"
-write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2], substr(Sys.time(), 1,16),sep=""),append=TRUE)
-write.table(matr, file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE , col.names = F, row.names = F)
-line="#ADVANCED OPTION PARAMETER (METABOLOMICS)#"
-write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2], substr(Sys.time(), 1,16),sep=""),append=TRUE)
-write.table(matr_2, file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE , col.names = F, row.names = F)
-line="#ADVANCED OPTION PARAMETER (METADATA)#"
-write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2], substr(Sys.time(), 1,16),sep=""),append=TRUE)
-write.table(matr_3, file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE , col.names = F, row.names = F)
-line="#ADVANCED OPTION PARAMETER (MOFA)#"
-write(line,file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2], substr(Sys.time(), 1,16),sep=""),append=TRUE)
-write.table(matr_3, file= paste(directory,"/","Report_parameters/","Report_", args[1],"_vs_", args[2],"_", substr(Sys.time(), 1,16),sep=""),append=TRUE, col.names = F, row.names = F)
+addWorksheet(wb, "OMICS_COMMANDS")
+writeData(wb, "OMICS_COMMANDS", COMMAND)
 
+addWorksheet(wb, "MOFA_COMMANDS")
+writeData(wb, "MOFA_COMMANDS", COMMAND_MOFA)
 
-cat("\n\n\n\n\n Report parameters saved ^-^")
+addWorksheet(wb, "ADV_GENERAL")
+writeData(wb, "ADV_GENERAL", matr)
+
+addWorksheet(wb, "ADV_METABOLOMICS")
+writeData(wb, "ADV_METABOLOMICS", matr_2)
+
+addWorksheet(wb, "ADV_METADATA")
+writeData(wb, "ADV_METADATA", matr_3)
+
+addWorksheet(wb, "ADV_MOFA")
+writeData(wb, "ADV_MOFA", matr_4)
+
+saveWorkbook(wb, excel_file, overwrite = TRUE)

@@ -125,12 +125,13 @@ snf.preprocess <- function(data, metadata,
     # get common samples among all omics
     common_samples <- Reduce(intersect, lapply(data, rownames))
     metadata <- metadata[which(metadata$ID %in% common_samples),]
+    metadata <- metadata[order(metadata$ID),]
 
-        # Collect common set of samples in all omics since SNF does not natively
+    # Collect common set of samples in all omics since SNF does not natively
     # handle missing data
     for(omic in names(data)){
         data[[omic]] <- data[[omic]][common_samples, ]
-        
+        data[[omic]]<- data[[omic]][order(rownames(data[[omic]])),]
     }
     
     return(list(data=data, metadata=metadata))
@@ -1173,10 +1174,10 @@ plot.alluvial <- function(clust_df, gt.clust, var_explain, save_path="."){
     # Check that clust_df, gt.clust and var_explain have the same order
     sample_names <- list(names(gt.clust), rownames(var_explain))
     sample_names <- sample_names[ !sapply(sample_names, is.null) ]
-    same_order <-  all(vapply(sample_names, function(x) identical(x, rownames(clust_df)), logical(1)))
-    if(!same_order){
-      stop("The rownames of clust_df, gt.clust and var_explain must be the same!")
-    }
+    #same_order <-  all(vapply(sample_names, function(x) identical(x, rownames(clust_df)), logical(1)))
+    #if(!same_order){
+    #  stop("The rownames of clust_df, gt.clust and var_explain must be the same!")
+    #}
   
     names(clust_df) <- "Pred. Clusters"
     

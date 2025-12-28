@@ -1289,7 +1289,7 @@ class Ui_BiomiX(object):
 
     def retranslateUi(self, BiomiX):
         _translate = QtCore.QCoreApplication.translate
-        BiomiX.setWindowTitle(_translate("BiomiX", "Biomix 2.4"))
+        BiomiX.setWindowTitle(_translate("BiomiX", "Biomix 2.5"))
         self.label_31.setText(_translate("BiomiX", "Factor to explore"))
         self.pushButton.setText(_translate("BiomiX", "Start Analysis"))
         self.Push_output.setText(_translate("BiomiX", "Select the directory"))
@@ -1456,6 +1456,11 @@ class Ui_BiomiX(object):
         print(df)
         # Extract unique elements from the "conditions" column
         unique_conditions = df["CONDITION"].unique()
+        print(unique_conditions)
+        # Check if CONDITION is numeric and warn the user
+        if pd.api.types.is_numeric_dtype(df["CONDITION"]):
+            print("⚠️ ATTENTION! numpy.float64 ERROR: 'CONDITION' column is numeric! Conditions should be characters (i.e C1, group2, disease). Convert them before adding.")
+
         print(unique_conditions)
 
         # Populate the QComboBox with unique elements
@@ -6779,7 +6784,7 @@ class SecondWindow(QMainWindow):
 
     def retranslateUi2(self, BiomiX_advanced):
         _translate = QtCore.QCoreApplication.translate
-        BiomiX_advanced.setWindowTitle(_translate("BiomiX_advanced", "BiomiX 2.4 advanced options"))
+        BiomiX_advanced.setWindowTitle(_translate("BiomiX_advanced", "BiomiX 2.5 advanced options"))
         self.push_panel.setText(_translate("BiomiX", "Upload Panel"))
         self.push_annot_01.setText(_translate("BiomiX", "Upload MS1"))
         self.push_annot_01b.setText(_translate("BiomiX", "Upload MS1"))

@@ -10,16 +10,16 @@
 #
 # library(vroom)
 # args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"SJS"
+# args[1] <-"RA"
 # args[2] <-"CTRL"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 # 
 # directory <- args[[3]]
 # iterations = 1
 # selection_samples = "NO"
-# Cell_type = "PLASMA"
-# i = 1
-# ANNOTATION = "MS1"
+# Cell_type = "Plasma"
+# i = 2
+# ANNOTATION = "Annotated"
 # DIR_METADATA <- readLines("C:/Users/crist/Desktop/BiomiX2.5/directory.txt")
 # STATISTICS = "YES"
 # renv::load(paste(directory,"_INSTALL",sep="/"))
@@ -46,6 +46,8 @@ setwd(directory)
 
 library(jsonlite)
 library(tidyverse)
+setwd(directory)
+print(directory)
 combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
 
 
@@ -57,6 +59,8 @@ DIR_METADATA_output <- combined_json[["DIRECTORY_INFO"]][["OUTPUT_DIR"]]
 Heatmap_genes <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_CLUSTERING_OPTIONS[3])
 LogFC <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[1])
 padju <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[2])
+ANNOTATION <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[1]
+ANNOTATION_TYPE <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[2]
 MS2_databases = c("HMDB","MONA","MASSBANK")  
 
 
@@ -99,6 +103,18 @@ if (grepl("\\.xlsx$|\\.xls$", COMMAND$DIRECTORIES[i])) {
         matrix <- vroom(COMMAND$DIRECTORIES[i],delim="\t",col_names = TRUE, comment = "#")
 }
 
+
+#Load Mart metabolome data
+Mart_metabolome<-vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/Metabolome_reference_ID.tsv", sep=""), delim = "\t")
+if (ANNOTATION == "Annotated" | ANNOTATION_TYPE == "compound_name") {
+  matrix <- matrix %>%
+    left_join(Mart_metabolome %>% select(name, HMDB),
+              by = c("ID" = "name")) %>%
+    mutate(ID = if_else(!is.na(HMDB), HMDB, ID)) %>%
+    select(-HMDB)
+  matrix <- matrix[grep("^HMDB.*",matrix$ID),]
+}
+
 sam <- colnames(matrix)
 pea <-matrix$ID
 matrix <- t(matrix[,-1])
@@ -119,7 +135,9 @@ if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
 
 
 
+
 ### UPLOAD ANNOTATION IF THE USER SELECTED THE MS1 OR MS2 ANNOTATION
+if(ANNOTATION != "Annotated"){
 ANNOTATION = COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[1]
 
 load_annotation(ANNOTATION, i, COMMAND_ADVANCED)
@@ -176,7 +194,7 @@ load_biofluid_metabolites(COMMAND$LABEL[i], "Amniotic Fluid", "AF_metabolite_ann
                           "AF_metabolite", directory2)
 
 
-
+}
 
 #SAMPLES SELECTUON BASED ON THEIR LABEL NAME (BY REGEX) -
 # IT CORRESPONDS TO -> SELECTION OPTION ON INTERFACE
@@ -233,8 +251,13 @@ matrixs <- add_column(matrixs, Metadata$CONDITION, .after = 1)
 colnames(matrixs)[2] <- "CONDITION"
 matrixs[,3:ncol(matrixs)]<-apply(matrixs[,3:ncol(matrixs)],2,as.numeric)
 #matrixs[matrixs == 0] <- 1
-write.table(matrixs,paste(directory2,"/Metabolomics_",Cell_type, "_MOFA.tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
 
+
+dir.create(path = paste(directory,"/Integration/INPUT/", "Metabolomics_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+
+directory3 <- paste(directory, "/Integration/INPUT/", "Metabolomics_", Cell_type,  "_",args[1],"_vs_", args[2], sep ="")
+
+write.table(matrixs,paste(directory3,"/Metabolomics_",Cell_type, "_MOFA.tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
 
 
 if (STATISTICS == "YES"){
@@ -260,7 +283,9 @@ run_dge_analysis_annotated(TEST, matrix, Metadata, Cell_type, args, directory, p
 
 ###  HEATMAP ###
 generate_heatmap_annotated(ALTI, BASSI, matrix, Metadata, Heatmap_genes, Cell_type, args, directory2)
-        
+
+query_id <- total[which(total$p_val < 0.05),] #REPLACE IT WITH P.ADJ
+
 ##### MetPath  #####
 run_metpath_pipeline_annotated(total, COMMAND_ADVANCED, Cell_type, args, directory2, hmdb_pathway, kegg_hsa_pathway)
 

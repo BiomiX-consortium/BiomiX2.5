@@ -3,8 +3,8 @@
 #
 # # #MANUAL INPUT
 # args = as.list(c("BLymphocytes","SLE"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
+# args[1] <-"RA"
+# args[2] <-"CTRL"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 
 # directory <-args[3]
@@ -426,6 +426,57 @@ output_file <- paste("DIABLO_SEPARATION", "_", args[1], "_vs_", args[2], "_facto
 write.table(results, file = output_file, quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
 
 
+
+
+
+Views<-names_X
+
+
+#TEST
+n=1
+
+for(i in 1:length(COMMAND$INTEGRATION)){
+  #print(i)
+  
+  if(COMMAND$INTEGRATION[i] == "YES"){
+    
+    if(COMMAND$DATA_TYPE[i] == "Metabolomics"){
+      print("Cleaning metabolomics metabolite position:")
+      #print(i)
+      o<- list("Metabolomics" = get(paste("INPUT",i,"_visual",sep=""))[-1:-2])
+      names(o) <- Views[i]
+      #print(o)
+      result.diablo[["names"]][["colnames"]][[Views[i]]] <- as.character(unlist(o))
+      rownames(result.diablo[["loadings"]][[Views[i]]]) <- as.character(unlist(o))
+      print("OK")
+    }
+    
+    if(COMMAND$DATA_TYPE[i] == "Transcriptomics"){
+      print("Cleaning Transcriptomics gene position:")
+      #print(i)
+      o<- list("Trascriptomics" = get(paste("INPUT",i,"_visual",sep="")))
+      names(o) <- Views[i]
+      #print(o)
+      result.diablo[["names"]][["colnames"]][[Views[i]]] <- as.character(unlist(o))
+      rownames(result.diablo[["loadings"]][[Views[i]]]) <- as.character(unlist(o))
+      print("OK")
+    }
+    
+    
+    if(COMMAND$DATA_TYPE[i] == "Methylomics"){
+      print("Cleaning Methylomics CpG position:")
+      print(i)
+      o<- list("Methylomics" = get(paste("INPUT",i,"_visual",sep="")))
+      names(o) <- Views[i]
+      #print(o)
+      result.diablo[["names"]][["colnames"]][[Views[i]]] <- as.character(unlist(o))
+      rownames(result.diablo[["loadings"]][[Views[i]]]) <- as.character(unlist(o))
+      print("OK")
+    }
+
+  }
+  
+}
 
 
 
