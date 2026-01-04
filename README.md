@@ -2,6 +2,31 @@
 ## **BiomiX package/source:** https://github.com/IxI-97/BiomiX
 ## **News**
 
+
+### *04 January 2025*
+
+Hi everyone!
+
+We have some great news for you! The Linux version of the BiomiX version 2.5 is finally out, including many improvements and bug corrections. Here you can find some:
+
+-Conversion Ensembl name in MOFA/DIABLO contributors output
+-Plot contribution and heatmap of all the MOFA/DIABLO factors (not only significant)
+-Debugging atomic values error in shiny app
+-Correzione metabolome and methylomics name in MOFA/Diablo integration
+
+The installation in Linux system will be similar to the one of Windows including 4 bash files to run in the terminal:
+Install Python (.exe N°01)
+Install R (.exe N°02)
+Install R packages (.exe N°03)
+Add extra R packages for SNF and NEMO (.exe N°04)
+
+Soon we will release the version 3.0 including a novel integration method and the nextflow pipeline. Thank you for your support over this year since the starting of the consortium.
+
+The best has to come! Happy new year!
+
+— The BiomiX Team 
+
+
 ### *23 June 2025*
 
 Hi everyone!
