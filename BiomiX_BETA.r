@@ -286,14 +286,23 @@ if(COMMAND_MOFA[1,2] == "MOFA_INTEGRATION") {
         }
   
         if(COMMAND_MOFA[1,2] == "NEMO_INTEGRATION") {
-    
+
                 cat(paste( "\n\n\n\n\nStarting the NEMO analysis \n\n\n\n\n", sep =""))
                 Sys.sleep(5)
                 source(paste(directory,"/integration/NEMO_int.R",sep=""))
                 cat("\n\n\n\n\n NEMO analysis complete ^-^")
-    
+
   }
-  
+
+        if(COMMAND_MOFA[1,2] == "MINTTEA_INTEGRATION") {
+
+                cat(paste( "\n\n\n\n\nStarting the MintTea analysis \n\n\n\n\n", sep =""))
+                Sys.sleep(5)
+                source(paste(directory,"/Integration/MintTea_int.R",sep=""))
+                cat("\n\n\n\n\n MintTea analysis complete ^-^")
+
+  }
+
 }
 
 
@@ -506,8 +515,10 @@ matr_4 <- make_param_table(
     "NEMO_N°Neighbours", "NEMO_Variance_affinity_Matrix",
     "SNF_NEMO_Enrichment_Variable", "SNF_NEMO_Survival_Variable", "SNF_NEMO_Ground_truth_variable",
     "SNF_NEMO_Max_cluster_expected", "SNF_NEMO_N°feature_heatmap", "SNF_NEMO_N°input_features",
-    "DIABLO_Design_matrix_path", "Diablo_features_selection?", "Diablo_N°iterations"
-    
+    "DIABLO_Design_matrix_path", "Diablo_features_selection?", "Diablo_N°iterations",
+    "MintTea_N°repeats", "MintTea_N°folds", "MintTea_edge_threshold",
+    "MintTea_keepX_per_component", "MintTea_design_value"
+
   ),
   values = c(
     COMMAND_ADVANCED$ADVANCED_OPTION_MOFA,
@@ -520,7 +531,9 @@ matr_4 <- make_param_table(
     COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS,
     COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS,
     COMMAND_ADVANCED$ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN[1],
-    COMMAND_ADVANCED$ADVANCED_OPTION_DIABLO_OPTIONS[1:2]
+    COMMAND_ADVANCED$ADVANCED_OPTION_DIABLO_OPTIONS[1:2],
+    COMMAND_ADVANCED$ADVANCED_OPTION_MINTTEA_OPTIONS,
+    COMMAND_ADVANCED$ADVANCED_OPTION_MINTTEA_FEATURES[1:2]
   )
 )
 

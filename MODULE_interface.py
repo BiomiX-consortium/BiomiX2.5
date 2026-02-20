@@ -1006,6 +1006,17 @@ class Ui_BiomiX(object):
         self.radioButton_7.setObjectName("radioButton_7")
         block3_middle_layout.addWidget(self.radioButton_7)
 
+        #MintTea radiobutton
+        self.radioButton_8 = QtWidgets.QRadioButton(self.centralwidget)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.radioButton_8.setFont(font)
+        self.radioButton_8.setObjectName("radioButton_8")
+        block3_middle_layout.addWidget(self.radioButton_8)
+
 
         # Create separate button groups
         self.group1 = QtWidgets.QButtonGroup(self.centralwidget)
@@ -1020,6 +1031,7 @@ class Ui_BiomiX(object):
         self.group2.addButton(self.radioButton_5)
         self.group2.addButton(self.radioButton_6)
         self.group2.addButton(self.radioButton_7)
+        self.group2.addButton(self.radioButton_8)
         
         
         self.label_64.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
@@ -1028,8 +1040,9 @@ class Ui_BiomiX(object):
         self.label_68.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)        
         self.radioButton_4.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.radioButton_5.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.radioButton_6.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)            
-        self.radioButton_7.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)            
+        self.radioButton_6.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.radioButton_7.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.radioButton_8.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
                 
         block3_layout.addLayout(block3_middle_layout)
@@ -1359,6 +1372,7 @@ class Ui_BiomiX(object):
         self.radioButton_5.setText(_translate("BiomiX", "Diablo"))
         self.radioButton_6.setText(_translate("BiomiX", "SNF"))
         self.radioButton_7.setText(_translate("BiomiX", "NEMO"))
+        self.radioButton_8.setText(_translate("BiomiX", "MintTea"))
         self.label_66.setText(_translate("BiomiX", "Integration Options"))
         self.label_67.setText(_translate("BiomiX", " Factors"))
         self.radioButton_2.setText(_translate("BiomiX", "No"))
@@ -1713,7 +1727,9 @@ class Ui_BiomiX(object):
         elif self.radioButton_6.isChecked():  # use elif if mutually exclusive
             radio = "SNF_INTEGRATION"
         elif self.radioButton_7.isChecked():  # use elif if mutually exclusive
-            radio = "NEMO_INTEGRATION"    
+            radio = "NEMO_INTEGRATION"
+        elif self.radioButton_8.isChecked():  # use elif if mutually exclusive
+            radio = "MINTTEA_INTEGRATION"
         if radio:  # only append if radio is assigned
             input_mofa.append(radio)
         else:
@@ -2234,6 +2250,20 @@ class Ui_BiomiX(object):
         Diablo_options.append(Diablo_feature_selection)
         Diablo_options.append(N_Iteration_diablo)
         Diablo_options.append("X")
+
+        MintTea_n_repeats      = self.second_window.SpinBox_minttea_repeats.value()
+        MintTea_n_folds        = self.second_window.SpinBox_minttea_folds.value()
+        MintTea_edge_threshold = self.second_window.doubleSpinBox_minttea_edge.value()
+        MintTea_keepX          = self.second_window.SpinBox_minttea_keepX.value()
+        MintTea_design_val     = self.second_window.doubleSpinBox_minttea_design.value()
+
+        MintTea_options.append(MintTea_n_repeats)
+        MintTea_options.append(MintTea_n_folds)
+        MintTea_options.append(MintTea_edge_threshold)
+
+        MintTea_features.append(MintTea_keepX)
+        MintTea_features.append(MintTea_design_val)
+        MintTea_features.append("X")
         
         
 
@@ -2502,6 +2532,8 @@ class Ui_BiomiX(object):
         print(SNF_NEMO_numeric_options)
         print(file_paths_design_diablo)
         print(Diablo_options)
+        print(MintTea_options)
+        print(MintTea_features)
         
         df = pd.DataFrame(
             list(
@@ -2538,9 +2570,11 @@ class Ui_BiomiX(object):
                     SNF_NEMO_metadata_variables,
                     SNF_NEMO_numeric_options,
                     file_paths_design_diablo,
-                    Diablo_options
-                    
-                    
+                    Diablo_options,
+                    MintTea_options,
+                    MintTea_features
+
+
                 )
             ),
             columns=[
@@ -2576,8 +2610,10 @@ class Ui_BiomiX(object):
                 "ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES",
                 "ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS",
                 "ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN",
-                "ADVANCED_OPTION_DIABLO_OPTIONS"
-                
+                "ADVANCED_OPTION_DIABLO_OPTIONS",
+                "ADVANCED_OPTION_MINTTEA_OPTIONS",
+                "ADVANCED_OPTION_MINTTEA_FEATURES"
+
             ],
         )
         print("ADVANCED_PARAMETERS_SAVED")
@@ -2620,6 +2656,8 @@ class Ui_BiomiX(object):
         SNF_NEMO_metadata_variables.clear()
         SNF_NEMO_numeric_options.clear()
         Diablo_options.clear()
+        MintTea_options.clear()
+        MintTea_features.clear()
 
 
 
@@ -5796,8 +5834,210 @@ class SecondWindow(QMainWindow):
         self.comboBox_62_2.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.label_252_2.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.SpinBox_59_2.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        
-        
+
+
+        # ---- MintTea Options ----
+
+        block4_line_minttea_header_layout = QtWidgets.QHBoxLayout()
+
+        self.line_minttea_1 = QtWidgets.QFrame(self.tab)
+        self.line_minttea_1.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        self.line_minttea_1.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.line_minttea_1.setObjectName("line_minttea_1")
+        block4_line_minttea_header_layout.addWidget(self.line_minttea_1)
+
+        self.label_minttea_title = QtWidgets.QLabel(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.label_minttea_title.setFont(font)
+        self.label_minttea_title.setObjectName("label_minttea_title")
+        self.label_minttea_title.setText("MintTea Options  ")
+        block4_line_minttea_header_layout.addWidget(self.label_minttea_title)
+
+        self.line_minttea_2 = QtWidgets.QFrame(self.tab)
+        self.line_minttea_2.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        self.line_minttea_2.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.line_minttea_2.setObjectName("line_minttea_2")
+        block4_line_minttea_header_layout.addWidget(self.line_minttea_2)
+
+        block4_layout.addLayout(block4_line_minttea_header_layout)
+
+        self.line_minttea_1.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.label_minttea_title.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.line_minttea_2.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        # MintTea help link
+        block4_line_minttea_link_layout = QtWidgets.QHBoxLayout()
+        self.label_link_minttea = QtWidgets.QLabel(self)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.label_link_minttea.setFont(font)
+        self.label_link_minttea.setObjectName("label_link_minttea")
+        self.label_link_minttea.setText('<a href="https://github.com/efratmuller/MintTea">Help MintTea parameters (GitHub)</a>')
+        self.label_link_minttea.setOpenExternalLinks(True)
+        self.label_link_minttea.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        block4_line_minttea_link_layout.addWidget(self.label_link_minttea)
+        block4_layout.addLayout(block4_line_minttea_link_layout)
+
+        # MintTea controls row 1: n_repeats, n_folds, edge_threshold
+        block4_line_minttea_row1_layout = QtWidgets.QHBoxLayout()
+
+        self.label_minttea_repeats = QtWidgets.QLabel(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.label_minttea_repeats.setFont(font)
+        self.label_minttea_repeats.setStyleSheet("QWidget{\nbackground-color:rgb(114, 159, 207)\n}")
+        self.label_minttea_repeats.setObjectName("label_minttea_repeats")
+        self.label_minttea_repeats.setText("N° repeats")
+        block4_line_minttea_row1_layout.addWidget(self.label_minttea_repeats)
+
+        self.SpinBox_minttea_repeats = QtWidgets.QSpinBox(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.SpinBox_minttea_repeats.setFont(font)
+        self.SpinBox_minttea_repeats.setMinimum(1)
+        self.SpinBox_minttea_repeats.setMaximum(1000)
+        self.SpinBox_minttea_repeats.setSingleStep(5)
+        self.SpinBox_minttea_repeats.setProperty("value", 20)
+        self.SpinBox_minttea_repeats.setObjectName("SpinBox_minttea_repeats")
+        block4_line_minttea_row1_layout.addWidget(self.SpinBox_minttea_repeats)
+
+        self.label_minttea_folds = QtWidgets.QLabel(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.label_minttea_folds.setFont(font)
+        self.label_minttea_folds.setStyleSheet("QWidget{\nbackground-color:rgb(114, 159, 207)\n}")
+        self.label_minttea_folds.setObjectName("label_minttea_folds")
+        self.label_minttea_folds.setText("N° CV folds")
+        block4_line_minttea_row1_layout.addWidget(self.label_minttea_folds)
+
+        self.SpinBox_minttea_folds = QtWidgets.QSpinBox(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.SpinBox_minttea_folds.setFont(font)
+        self.SpinBox_minttea_folds.setMinimum(2)
+        self.SpinBox_minttea_folds.setMaximum(20)
+        self.SpinBox_minttea_folds.setSingleStep(1)
+        self.SpinBox_minttea_folds.setProperty("value", 5)
+        self.SpinBox_minttea_folds.setObjectName("SpinBox_minttea_folds")
+        block4_line_minttea_row1_layout.addWidget(self.SpinBox_minttea_folds)
+
+        self.label_minttea_edge = QtWidgets.QLabel(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.label_minttea_edge.setFont(font)
+        self.label_minttea_edge.setStyleSheet("QWidget{\nbackground-color:rgb(114, 159, 207)\n}")
+        self.label_minttea_edge.setObjectName("label_minttea_edge")
+        self.label_minttea_edge.setText("Edge threshold")
+        block4_line_minttea_row1_layout.addWidget(self.label_minttea_edge)
+
+        self.doubleSpinBox_minttea_edge = QtWidgets.QDoubleSpinBox(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.doubleSpinBox_minttea_edge.setFont(font)
+        self.doubleSpinBox_minttea_edge.setMinimum(0.0)
+        self.doubleSpinBox_minttea_edge.setMaximum(1.0)
+        self.doubleSpinBox_minttea_edge.setSingleStep(0.05)
+        self.doubleSpinBox_minttea_edge.setProperty("value", 0.9)
+        self.doubleSpinBox_minttea_edge.setObjectName("doubleSpinBox_minttea_edge")
+        block4_line_minttea_row1_layout.addWidget(self.doubleSpinBox_minttea_edge)
+
+        block4_layout.addLayout(block4_line_minttea_row1_layout)
+
+        self.label_minttea_repeats.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.SpinBox_minttea_repeats.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.label_minttea_folds.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.SpinBox_minttea_folds.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.label_minttea_edge.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.doubleSpinBox_minttea_edge.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        # MintTea controls row 2: keepX per component, design value
+        block4_line_minttea_row2_layout = QtWidgets.QHBoxLayout()
+
+        self.label_minttea_keepX = QtWidgets.QLabel(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.label_minttea_keepX.setFont(font)
+        self.label_minttea_keepX.setStyleSheet("QWidget{\nbackground-color:rgb(114, 159, 207)\n}")
+        self.label_minttea_keepX.setObjectName("label_minttea_keepX")
+        self.label_minttea_keepX.setText("keepX per component")
+        block4_line_minttea_row2_layout.addWidget(self.label_minttea_keepX)
+
+        self.SpinBox_minttea_keepX = QtWidgets.QSpinBox(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.SpinBox_minttea_keepX.setFont(font)
+        self.SpinBox_minttea_keepX.setMinimum(1)
+        self.SpinBox_minttea_keepX.setMaximum(200)
+        self.SpinBox_minttea_keepX.setSingleStep(1)
+        self.SpinBox_minttea_keepX.setProperty("value", 5)
+        self.SpinBox_minttea_keepX.setObjectName("SpinBox_minttea_keepX")
+        block4_line_minttea_row2_layout.addWidget(self.SpinBox_minttea_keepX)
+
+        self.label_minttea_design = QtWidgets.QLabel(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.label_minttea_design.setFont(font)
+        self.label_minttea_design.setStyleSheet("QWidget{\nbackground-color:rgb(114, 159, 207)\n}")
+        self.label_minttea_design.setObjectName("label_minttea_design")
+        self.label_minttea_design.setText("Design value (0=disease focus, 1=inter-omic)")
+        block4_line_minttea_row2_layout.addWidget(self.label_minttea_design)
+
+        self.doubleSpinBox_minttea_design = QtWidgets.QDoubleSpinBox(self.tab)
+        font = QtGui.QFont()
+        font.setFamily("Arial")
+        font.setPointSize(11)
+        font.setBold(False)
+        font.setWeight(50)
+        self.doubleSpinBox_minttea_design.setFont(font)
+        self.doubleSpinBox_minttea_design.setMinimum(0.0)
+        self.doubleSpinBox_minttea_design.setMaximum(1.0)
+        self.doubleSpinBox_minttea_design.setSingleStep(0.05)
+        self.doubleSpinBox_minttea_design.setProperty("value", 0.1)
+        self.doubleSpinBox_minttea_design.setObjectName("doubleSpinBox_minttea_design")
+        block4_line_minttea_row2_layout.addWidget(self.doubleSpinBox_minttea_design)
+
+        block4_layout.addLayout(block4_line_minttea_row2_layout)
+
+        self.label_minttea_keepX.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.SpinBox_minttea_keepX.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.label_minttea_design.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.doubleSpinBox_minttea_design.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+
         block4_line3_layout = QtWidgets.QHBoxLayout()
 
         #Initial line
@@ -7367,6 +7607,8 @@ if __name__ == "__main__":
     SNF_NEMO_metadata_variables = []
     SNF_NEMO_numeric_options = []
     Diablo_options = []
+    MintTea_options = []
+    MintTea_features = []
 
     
     app = QtWidgets.QApplication(sys.argv)
