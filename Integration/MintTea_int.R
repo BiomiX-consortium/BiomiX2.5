@@ -202,14 +202,18 @@ prefixed_list <- lapply(seq_along(myList), function(i) {
 combined_data            <- as.data.frame(do.call(cbind, prefixed_list))
 rownames(combined_data)  <- common_rows
 
-# Align metadata and add label column
+# Align metadata and add required MintTea columns:
+#   sample_id     – sample identifier
+#   disease_state – "disease" (case) or "healthy" (control)
 METADATA_f <- METADATA[METADATA$ID %in% common_rows, ]
 METADATA_f <- METADATA_f[order(factor(METADATA_f$ID, levels = common_rows)), ]
-combined_data$label <- ifelse(METADATA_f$CONDITION == args[1], "case", "control")
+combined_data$sample_id     <- common_rows
+combined_data$disease_state <- ifelse(METADATA_f$CONDITION == args[1], "disease", "healthy")
 
-cat("MintTea input dimensions:", nrow(combined_data), "samples x", ncol(combined_data) - 1, "features\n")
+cat("MintTea input dimensions:", nrow(combined_data), "samples x",
+    ncol(combined_data) - 2, "features\n")
 cat("Label distribution:\n")
-print(table(combined_data$label))
+print(table(combined_data$disease_state))
 
 
 # ---- Create output directory ----
@@ -230,13 +234,17 @@ cat("keepX per comp    :", keepX_per_comp, "\n")
 cat("design value      :", design_val, "\n\n")
 
 minttea_results <- MintTea(
-  data                  = combined_data,
+  proc_data             = combined_data,
   view_prefixes         = names_X,
-  param_n_repeats       = n_repeats,
-  param_n_folds         = n_folds,
+  sample_id_column      = "sample_id",
+  study_group_column    = "disease_state",
+  case_group_name       = "disease",
+  control_group_name    = "healthy",
+  param_n_repeats       = c(n_repeats),
+  param_n_folds         = c(n_folds),
   param_edge_thresholds = c(edge_threshold),
   param_diablo_keepX    = c(keepX_per_comp),
-  param_diablo_design   = design_val
+  param_sgcca_design    = c(design_val)
 )
 
 # Save raw results object
