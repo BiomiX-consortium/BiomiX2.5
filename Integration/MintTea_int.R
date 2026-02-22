@@ -194,6 +194,15 @@ prefixed_list <- lapply(seq_along(myList), function(i) {
   mat <- apply(df, 2, as.numeric)
   df  <- as.data.frame(mat)
   rownames(df) <- common_rows
+  # Remove CV-fold-unsafe features: a feature is risky if the number of
+  # samples that differ from the modal value is ≤ ceil(N/n_folds).
+  # Such features can become zero-variance in a CV training fold and
+  # cause block.splsda to error.  ceil(N/n_folds) is the largest held-out
+  # fold size; requiring minority_count > that guarantees safety.
+  n_max_holdout  <- ceiling(nrow(df) / n_folds)
+  feat_modal     <- apply(df, 2, function(x) max(table(x)))
+  feat_minority  <- nrow(df) - feat_modal
+  df <- df[, feat_minority > n_max_holdout, drop = FALSE]
   # Prefix column names with omic label, sanitise special characters
   colnames(df) <- paste0(names_X[i], "__", make.names(colnames(df)))
   df
