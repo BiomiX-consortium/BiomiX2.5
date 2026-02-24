@@ -6,13 +6,14 @@ CONDA_BASE="${CONDA_BASE:-/opt/conda}"
 
 source "$CONDA_BASE/etc/profile.d/conda.sh"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 conda env list | grep -q '^biomix ' && conda env remove -n biomix --yes
 
-conda create -n biomix python=3.9 -y
+# Create the full environment in one solver pass
+mamba env create -f "$SCRIPT_DIR/biomix_env.yml"
+
 conda activate biomix
-conda config --add channels conda-forge
-conda install mamba=2.0.5 -y
-mamba install -c conda-forge r-base=4.4.1 -y
-mamba install -c conda-forge r-systemfonts=1.1.0 -y
-mamba install -c conda-forge r-rcpp=1.0.13 -y
-python3 MODULE_LINUX.py
+
+# Install the small set of custom R packages not available on conda
+Rscript "$SCRIPT_DIR/MODULE_LINUX_custom_r.r"
