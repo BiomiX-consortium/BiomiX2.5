@@ -26,6 +26,13 @@ remotes::install_local("metpath_1.0.8.tar.gz",      upgrade = "never")
 remotes::install_local("litsearchr_1.0.0.tar.gz",   upgrade = "never")
 remotes::install_local("cmmr_1.0.5.tar.gz",         upgrade = "never")
 
+# ── Methylation packages not available for R 4.4 on bioconda ─────
+install.packages("ChAMPdata_2.36.0.tar.gz", repos = NULL, type = "source")
+install.packages("ChAMP_2.34.0.tar.gz",     repos = NULL, type = "source")
+
+# ── SNF/spatial package not on conda-forge ────────────────────────
+install.packages("sabre_0.4.3.tar.gz", repos = NULL, type = "source")
+
 # ── SNF-NEMO extension: NEMO ──────────────────────────────────────
 install.packages("NEMO_0.1.0.tar.gz", repos = NULL, type = "source")
 

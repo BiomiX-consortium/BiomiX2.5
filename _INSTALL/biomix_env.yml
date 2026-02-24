@@ -32,7 +32,6 @@ dependencies:
   - r-car
   - r-circlize
   - r-cluster
-  - r-complexheatmap
   - r-corrplot
   - r-cowplot
   - r-data.table
@@ -59,7 +58,6 @@ dependencies:
   - r-ggsignif
   - r-ggstats
   - r-glmnet
-  - r-globaltest
   - r-glue
   - r-hmisc
   - r-htmltools
@@ -119,13 +117,12 @@ dependencies:
   - r-rstatix
   - r-rtsne
   - r-rvest
-  - r-sabre
   - r-shiny
   - r-shinythemes
   - r-sjlabelled
   - r-sjmisc
   - r-slam
-  - r-snftools
+  - r-snftool
   - r-snowballc
   - r-stringdist
   - r-stringi
@@ -168,8 +165,6 @@ dependencies:
   - bioconductor-bsgenome
   - bioconductor-bsseq
   - bioconductor-bumphunter
-  - bioconductor-champ
-  - bioconductor-champdata
   - bioconductor-complexheatmap
   - bioconductor-delayedarray
   - bioconductor-delayedmatrixstats
@@ -180,6 +175,7 @@ dependencies:
   - bioconductor-ensembldb
   - bioconductor-genefilter
   - bioconductor-genomeinfodb
+  - bioconductor-globaltest
   - bioconductor-genomicalignments
   - bioconductor-genomicfeatures
   - bioconductor-genomicranges
@@ -215,7 +211,7 @@ dependencies:
   - bioconductor-illuminahumanmethylation450kanno.ilmn12.hg19
   - bioconductor-illuminahumanmethylation450kmanifest
   - bioconductor-illuminahumanmethylationepicmanifest
-  - bioconductor-illuminahumanmethylationepicano.ilm10b4.hg19
+  - bioconductor-illuminahumanmethylationepicanno.ilm10b4.hg19
 
   # ── PyPI-only packages (no suitable conda binary) ─────────────────
   - pip:
