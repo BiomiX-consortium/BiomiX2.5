@@ -8,12 +8,12 @@ source "$CONDA_BASE/etc/profile.d/conda.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-conda env list | grep -q '^biomix ' && conda env remove -n biomix --yes
+conda env list | grep -q '^Biomix2.5 ' && conda env remove -n Biomix2.5 --yes
 
 # Create the full environment in one solver pass
 mamba env create -f "$SCRIPT_DIR/biomix_env.yml"
 
-conda activate biomix
+conda activate Biomix2.5
 
 # Install the small set of custom R packages not available on conda
 Rscript "$SCRIPT_DIR/MODULE_LINUX_custom_r.r"

@@ -1,7 +1,7 @@
 # BiomiX – custom R packages not available on conda-forge/bioconda
 # Covers: core packages, SNF-NEMO extension (NEMO), MintTea extension
 
-script_dir <- dirname(normalizePath(sys.frame(1)$ofile, mustWork = FALSE))
+script_dir <- dirname(normalizePath(sub("--file=", "", commandArgs(FALSE)[grep("--file=", commandArgs(FALSE))])))
 setwd(script_dir)
 
 if (!file.exists("Package_linux")) {

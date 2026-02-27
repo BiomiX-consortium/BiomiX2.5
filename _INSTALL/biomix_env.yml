@@ -1,4 +1,4 @@
-name: biomix
+name: Biomix2.5
 channels:
   - conda-forge
   - bioconda
