@@ -164,14 +164,11 @@ dependencies:
   - bioconductor-biostrings
   - bioconductor-biovizbase
   - bioconductor-bsgenome
-  - bioconductor-bsseq
   - bioconductor-bumphunter
   - bioconductor-complexheatmap
   - bioconductor-delayedarray
   - bioconductor-delayedmatrixstats
   - bioconductor-deseq2
-  - bioconductor-dmrcate
-  - bioconductor-dss
   - bioconductor-edger
   - bioconductor-ensembldb
   - bioconductor-genefilter
@@ -181,15 +178,12 @@ dependencies:
   - bioconductor-genomicfeatures
   - bioconductor-genomicranges
   - bioconductor-geoquery
-  - bioconductor-goseq
   - bioconductor-gviz
   - bioconductor-hdf5array
   - bioconductor-iranges
   - bioconductor-keggrest
   - bioconductor-limma
   - bioconductor-matrixgenerics
-  - bioconductor-minfi
-  - bioconductor-mofa2
   - bioconductor-msnbase
   - bioconductor-multtest
   - bioconductor-multiassayexperiment
@@ -209,14 +203,12 @@ dependencies:
   - bioconductor-zlibbioc
 
   # ── Illumina annotation data packages (bioconda) ─────────────────
-  - bioconductor-illuminahumanmethylation450kanno.ilmn12.hg19
-  - bioconductor-illuminahumanmethylation450kmanifest
-  - bioconductor-illuminahumanmethylationepicmanifest
-  - bioconductor-illuminahumanmethylationepicanno.ilm10b4.hg19
+
+  # ── PyQt5 via conda (pip wheel not available for osx-arm64 < 5.14) ─
+  - pyqt
 
   # ── PyPI-only packages (no suitable conda binary) ─────────────────
   - pip:
-    - PyQt5==5.12.3
     - scikit-learn==1.6.1
     - xlrd==2.0.1
     - openpyxl==3.1.5

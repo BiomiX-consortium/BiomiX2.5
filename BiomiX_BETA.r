@@ -27,8 +27,12 @@ print("Information acquired, running the analysis")
 
 #directory <- "/home/cristia/Scrivania/PhD/Bioinfo/Article_MULTI_BETA"
 directory <- unlist(args[[3]])
-setwd(paste(directory,"_INSTALL",sep="/"))
-renv::load(paste(directory,"_INSTALL",sep="/"))
+# renv is only used on Windows (bundled R). On macOS/Linux the conda env
+# already provides all packages, so skip renv::load().
+if (.Platform$OS.type == "windows") {
+  setwd(paste(directory,"_INSTALL",sep="/"))
+  renv::load(paste(directory,"_INSTALL",sep="/"))
+}
 
 setwd(directory)
 print(directory)
@@ -356,7 +360,7 @@ Sys.sleep(5)
 
 #COPY OMICS DIRECTORY
 
-if (directory != args[3]){
+if (DIR_METADATA_output != directory){
 
 for(output in 1:length(na.omit(COMMAND$LABEL))) {
         print(output)

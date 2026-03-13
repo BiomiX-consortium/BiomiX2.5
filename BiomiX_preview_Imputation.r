@@ -1,5 +1,5 @@
-#Load renv environment:
-renv::load(project = "_INSTALL")
+#Load renv environment (Windows only — conda env provides packages on macOS/Linux):
+if (.Platform$OS.type == "windows") renv::load(project = "_INSTALL")
 
 library(shiny)
 library(dplyr)
@@ -14,7 +14,15 @@ library(readxl)
 get_default_browser <- function() {
         print(getwd())
         directory <- getwd()
-        browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
+        browser_file <- paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep="")
+        if (!file.exists(browser_file)) {
+            # No browser config file (macOS/Linux conda install) — use system default
+            sysname <- Sys.info()[["sysname"]]
+            if (sysname == "Darwin") return("/usr/bin/open")
+            if (sysname == "Linux")  return("xdg-open")
+            return(NULL)
+        }
+        browser_analysis <- readLines(browser_file, n = 1)
         print(browser_analysis)
         
         if (.Platform$OS.type == "windows") {
@@ -428,7 +436,7 @@ library(mixOmics)
         if (is.null(browser_path)) {
                 stop("Browser path could not be determined.")
         }
-        
+
         # Launch the Shiny app
-        options(browser = get_default_browser())
+        options(browser = browser_path)
         shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))  # Launch browser

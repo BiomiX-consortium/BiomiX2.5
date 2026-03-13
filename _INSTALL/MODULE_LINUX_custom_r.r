@@ -47,8 +47,11 @@ tryCatch({
   cat("Reason:", conditionMessage(e), "\n")
 })
 
-library(masstools); library(massdataset); library(metid)
-library(metpath);   library(litsearchr);  library(cmmr)
-library(NEMO)
+for (pkg in c("ChAMPdata", "ChAMP", "masstools", "massdataset", "metid", "metpath", "litsearchr", "cmmr", "NEMO")) {
+  tryCatch(
+    library(pkg, character.only = TRUE),
+    error = function(e) cat("WARNING: could not load", pkg, ":", conditionMessage(e), "\n")
+  )
+}
 
 cat("Custom R packages installed successfully.\n")
