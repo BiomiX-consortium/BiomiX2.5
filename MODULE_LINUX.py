@@ -6,9 +6,19 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QFileDialog, QSizePolicy, QHBoxLayout, QVBoxLayout, QWidget
 
-home_directory = os.path.expanduser("~")
-env_directory = "/miniconda3/envs/BiomiX-env/bin/python3"
-conda_python_path = "".join([home_directory, env_directory])
+# Prefer CONDA_PREFIX (set when env is activated) over conda info --base,
+# which may return a different conda installation on the machine.
+_conda_prefix = os.environ.get("CONDA_PREFIX", "")
+if _conda_prefix and os.path.basename(_conda_prefix) == "Biomix2.5":
+    _env_prefix = _conda_prefix
+else:
+    _conda_base = (
+        subprocess.run(
+            ["conda", "info", "--base"], capture_output=True, text=True
+        ).stdout.strip() or "/opt/conda"
+    )
+    _env_prefix = os.path.join(_conda_base, "envs", "Biomix2.5")
+conda_python_path = os.path.join(_env_prefix, "bin", "python3")
 print(conda_python_path)
 
 # Get the path of the desired Python executable

@@ -57,7 +57,8 @@ metadata_dir <- tryCatch({
 output_dir <- tryCatch({
         readLines("directory_out.txt", warn = FALSE)[1]
 }, error = function(e) {
-        stop("Error reading directory_out.txt: ", e$message)
+        warning("directory_out.txt not found, defaulting to BASE_DIR: ", e$message)
+        args[3]  # fall back to the BASE_DIR argument
 })
 
 # Create a list for the directory info

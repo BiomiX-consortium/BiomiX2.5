@@ -149,7 +149,8 @@ colnames(metadata)[colnames(metadata) == "CONDITION"] <- "condition"
 # Source the BiomiX_preview script to load the runShinyApp() function
 source(paste(directory,'/BiomiX_preview.r', sep=""))
 
-browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
+browser_file <- paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep="")
+browser_analysis <- if (file.exists(browser_file)) readLines(browser_file, n = 1) else ""
 
 # Now call the runShinyApp function with numeric_data and metadata
 options(browser = get_default_browser())
@@ -251,4 +252,5 @@ if (STATISTICS == "YES"){
     BASSI = BASSI,
     directory_path = directory_path
   )
-}
+
+} # end if (STATISTICS == "YES")

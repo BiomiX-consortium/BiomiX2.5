@@ -1,0 +1,125 @@
+#!/bin/bash
+# postinstall — runs after macOS Installer copies files to disk
+# Installs Miniforge (if needed) and creates the Biomix2.5 conda environment.
+#
+# NOTE: This script may run as root. We use logname / SUDO_USER to resolve
+# the real user's home directory so conda is installed into their account.
+
+set -euo pipefail
+
+RESOURCES="/Applications/BiomiX.app/Contents/Resources"
+
+# --- Resolve the real user ---
+# Try SUDO_USER first (set when user runs: sudo installer ...)
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    REAL_USER="$SUDO_USER"
+else
+    # /dev/console is owned by the currently logged-in GUI user — reliable even
+    # when postinstall runs as root via the macOS Installer app
+    REAL_USER="$(stat -f '%Su' /dev/console 2>/dev/null || echo "")"
+fi
+if [ -z "${REAL_USER:-}" ] || [ "$REAL_USER" = "root" ]; then
+    # Last resort: first non-system user in /Users
+    REAL_USER="$(ls /Users | grep -v -E '^(Shared|\..*|Guest)$' | head -1)"
+fi
+
+REAL_HOME="$(dscl . -read /Users/"$REAL_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
+if [ -z "$REAL_HOME" ]; then
+    REAL_HOME="/Users/$REAL_USER"
+fi
+
+echo "BiomiX postinstall: real user = $REAL_USER, home = $REAL_HOME"
+
+# --- Detect architecture ---
+ARCH="$(uname -m)"   # arm64 or x86_64
+echo "Architecture: $ARCH"
+
+# --- Locate conda ---
+CONDA_SH=""
+for candidate in \
+    "$REAL_HOME/miniforge3/etc/profile.d/conda.sh" \
+    "$REAL_HOME/opt/miniforge3/etc/profile.d/conda.sh" \
+    "$REAL_HOME/miniconda3/etc/profile.d/conda.sh" \
+    "$REAL_HOME/opt/miniconda3/etc/profile.d/conda.sh" \
+    "$REAL_HOME/anaconda3/etc/profile.d/conda.sh" \
+    "/opt/homebrew/Caskroom/miniforge/base/etc/profile.d/conda.sh"
+do
+    if [ -f "$candidate" ]; then
+        CONDA_SH="$candidate"
+        echo "Found conda at: $candidate"
+        break
+    fi
+done
+
+# --- Install Miniforge if no conda found ---
+if [ -z "$CONDA_SH" ]; then
+    echo "No conda installation found. Installing Miniforge3 for $ARCH..."
+    MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-${ARCH}.sh"
+    MINIFORGE_INSTALLER="$REAL_HOME/Miniforge3-MacOSX-${ARCH}.sh"
+
+    # Download as the real user to avoid permission issues
+    sudo -u "$REAL_USER" curl -fsSL -o "$MINIFORGE_INSTALLER" "$MINIFORGE_URL"
+    sudo -u "$REAL_USER" bash "$MINIFORGE_INSTALLER" -b -p "$REAL_HOME/miniforge3"
+    rm -f "$MINIFORGE_INSTALLER"
+
+    CONDA_SH="$REAL_HOME/miniforge3/etc/profile.d/conda.sh"
+    echo "Miniforge3 installed at $REAL_HOME/miniforge3"
+fi
+
+# --- Source conda ---
+# shellcheck source=/dev/null
+source "$CONDA_SH"
+
+# --- Install mamba if not already available ---
+if ! conda run -n base which mamba &>/dev/null 2>&1; then
+    echo "Installing mamba into base environment..."
+    sudo -u "$REAL_USER" conda install -n base -c conda-forge mamba --yes
+fi
+
+# --- Create the Biomix2.5 environment ---
+ENV_YML="$RESOURCES/biomix_env_mac.yml"
+echo "Creating conda environment from $ENV_YML (this may take 10-30 minutes)..."
+sudo -u "$REAL_USER" bash -c "
+    source '$CONDA_SH'
+    mamba env create -f '$ENV_YML' || conda env create -f '$ENV_YML'
+"
+
+# --- Run custom R install scripts inside the env ---
+# Copy scripts to a user-writable temp dir so R can download/write files
+# (Resources is root-owned after install; the real user can't write there)
+R_WORKDIR="$(sudo -u "$REAL_USER" mktemp -d /tmp/biomix_install_XXXX)"
+cp "$RESOURCES/MODULE_LINUX_custom_r.r" "$R_WORKDIR/"
+cp "$RESOURCES/MODULE_MAC_custom_r.r"   "$R_WORKDIR/"
+chown "$REAL_USER" "$R_WORKDIR"/*.r
+
+run_rscript() {
+    local script="$1"
+    echo "Running: $script"
+    sudo -u "$REAL_USER" bash -c "
+        source '$CONDA_SH'
+        conda activate Biomix2.5
+        Rscript '$script'
+    "
+}
+
+# NOTE: Extension scripts (MODULE_LINUX_R_Extension_SNF_NEMO.r / MintTea.r) use
+# the old renv-based approach and are NOT run here — MODULE_LINUX_custom_r.r
+# already installs NEMO and MintTea via the Package_linux tarball.
+run_rscript "$R_WORKDIR/MODULE_LINUX_custom_r.r"
+run_rscript "$R_WORKDIR/MODULE_MAC_custom_r.r"
+
+rm -rf "$R_WORKDIR"
+
+# --- Give the real user write access to the app's resource directory ---
+# The app writes runtime files (directory.txt, outputs) into its own Resources/BiomiX folder.
+# /Applications is root-owned after install, so we fix ownership here.
+echo "Setting ownership of BiomiX resources to $REAL_USER..."
+chown -R "$REAL_USER" "/Applications/BiomiX.app/Contents/Resources/BiomiX"
+
+echo ""
+echo "============================================"
+echo " BiomiX 2.5 installation complete!"
+echo " Open /Applications/BiomiX.app to launch."
+echo "============================================"
+
+exit 0
