@@ -7,19 +7,19 @@
 # =======================
 # User Parameters Manual load (Debugging)
 # =======================
-#
+# 
 # library(vroom)
 # args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"RA"
-# args[2] <-"CTRL"
+# args[1] <-"Sjogrens"
+# args[2] <-"Healthy"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 # 
 # directory <- args[[3]]
 # iterations = 1
 # selection_samples = "NO"
-# Cell_type = "Plasma"
-# i = 2
-# ANNOTATION = "Annotated"
+# Cell_type = "Bnaive_neg"
+# i = 1
+# ANNOTATION = "MS2"
 # DIR_METADATA <- readLines("C:/Users/crist/Desktop/BiomiX2.5/directory.txt")
 # STATISTICS = "YES"
 # renv::load(paste(directory,"_INSTALL",sep="/"))
@@ -159,39 +159,39 @@ setwd(directory2)
 # Example calls (equivalent to your original code)
 load_biofluid_metabolites(COMMAND$LABEL[i], "Plasma", "serum_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites.csv?action=index&blood=1&c=hmdb_id&controller=metabolites&d=up&detected=1&expected=1&filter=true&predicted=1&quantified=1&utf8=%E2%9C%93",
-                          "serum_metabolite", directory2)
+                          "serum_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Urine", "urine_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites.csv?action=index&c=hmdb_id&controller=metabolites&d=up&detected=1&expected=1&filter=true&predicted=1&quantified=1&urine=1&utf8=%E2%9C%93",
-                          "urine_metabolite", directory2)
+                          "urine_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Saliva", "saliva_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&saliva=1&filter=true",
-                          "saliva_metabolite", directory2)
+                          "saliva_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Cerebrospinal Fluid", "cerebrospinal_fluid_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&csf=1&filter=true",
-                          "CSF_metabolite", directory2)
+                          "CSF_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Feces", "feces_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&feces=1&filter=true",
-                          "feces_metabolite", directory2)
+                          "feces_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Sweat", "sweat_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&sweat=1&filter=true",
-                          "sweat_metabolite", directory2)
+                          "sweat_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Breast milk", "breast_milk_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&breast_milk=1&filter=true",
-                          "breast_milk_metabolite", directory2)
+                          "breast_milk_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Bile", "bile_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&bile=1&filter=true",
-                          "bile_metabolite", directory2)
+                          "bile_metabolite", directory2, directory)
 
 load_biofluid_metabolites(COMMAND$LABEL[i], "Amniotic Fluid", "AF_metabolite_annotated.tsv",
                           "https://hmdb.ca/metabolites?utf8=%E2%9C%93&filter=true&quantified=1&detected=1&expected=1&predicted=1&amniotic_fluid=1&filter=true",
-                          "AF_metabolite", directory2)
+                          "AF_metabolite", directory2, directory)
 
 
 }
@@ -323,8 +323,11 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
                 write.table(annotation2,"TEMP.csv" ,quote = FALSE, row.names = F, sep = ",")
                 
                 #FIND THE LIST OF mzML file belonging to each matrix and add all of them in a vector
-                files <- grep("MS2*",list.files(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY[1]),value=TRUE)
-                files_MS2<-grep(paste("MS2_",COMMAND$LABEL[i],"*",sep=""),files,value=TRUE,ignore.case =TRUE)
+                #files <- grep("MS2*",list.files(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY[1]),value=TRUE)
+                #files_MS2<-grep(paste("MS2_",COMMAND$LABEL[i],"*",sep=""),files,value=TRUE,ignore.case =TRUE)
+                
+                files_MS2 <- grep("MS2*",list.files(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY[1]),value=TRUE)
+                
                 
                 Sys.time()
                 setwd(directory3)
@@ -424,11 +427,11 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
                 Negative_adduct <- strsplit(Negative_adduct, "/")
                 Negative_adduct <- Negative_adduct[[1]]
                 
-                if (is.na(Negative_adduct)){
+                if (any(is.na(Negative_adduct))){
                         ducts <- as.list(Positive_adduct)
                         #ducts <- Positive_adduct %>% str_c(collapse = ",")
                         #ducts <- paste("[",ducts,"]",sep = "")
-                } else if (is.na(Positive_adduct)){
+                } else if (any(is.na(Positive_adduct))){
                         ducts <- as.list(Negative_adduct)
                         #ducts <- Positive_adduct  %>% str_c(collapse = ",") 
                         #ducts <- paste("[",ducts,"]",sep = "")
@@ -533,7 +536,6 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
         result <- NULL
         
         # Try each biospecimen
-        result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, serum_metabolite, "Serum")
         if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, serum_metabolite, "Plasma")
         if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, urine_metabolite, "Urine")
         if (is.null(result)) result <- filter_by_biospecimen(COMMAND$LABEL[i], tat, saliva_metabolite, "Saliva")
@@ -576,6 +578,7 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
           result <- replace_ms1_with_ms2(annot, total, to_eliminate2)
           total <- result$total
           to_eliminate2 <- result$to_eliminate2
+          total<-result$total[-to_eliminate2,]
           
                 
         }

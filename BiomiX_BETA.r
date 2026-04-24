@@ -10,6 +10,8 @@ cat("\n\n\n\n\n          /////////      ///    /////////    ///       ///     //
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 
 
+old <- Sys.time() # get start time
+
 
 #Sys.sleep(5)
 print("Welcome to BiomiX toolkit")
@@ -245,8 +247,11 @@ for (i in position){
 
 #================================================================================
 
+old_comp <-  Sys.time() # calculate time computation
 
 if(COMMAND_MOFA[2,2] == "YES") {
+  
+
 
 if(COMMAND_MOFA[1,2] == "MOFA_INTEGRATION") {        
         
@@ -296,6 +301,8 @@ if(COMMAND_MOFA[1,2] == "MOFA_INTEGRATION") {
   
 }
 
+
+time_comput <-  Sys.time() - old_comp # calculate difference
 
 #================================================================================
 
@@ -416,6 +423,14 @@ write_section <- function(section_title, table = NULL) {
   }
 }
 
+
+
+# print elapsed time
+new <- Sys.time() - old # calculate difference
+
+print(paste("Total time running:",new)) # print in nice format
+print(paste("Total time integration:",time_comput)) # print in nice format
+
 # ---------- BUILD PARAMETER TABLES ----------
 
 matr <- make_param_table(
@@ -524,6 +539,20 @@ matr_4 <- make_param_table(
   )
 )
 
+
+matr_5 <- make_param_table(
+  names = c(
+    "Total_Time_running_seconds", "Time_integration_seconds"
+    
+  ),
+  values = c(
+    new,
+    time_comput
+  )
+)
+
+
+
 # ---------- OUTPUT DIRECTORY ----------
 
 dir_out <- file.path(directory, "Report_parameters")
@@ -561,4 +590,9 @@ writeData(wb, "ADV_METADATA", matr_3)
 addWorksheet(wb, "ADV_MOFA")
 writeData(wb, "ADV_MOFA", matr_4)
 
+addWorksheet(wb, "Running_time")
+writeData(wb, "Running_time", matr_5)
+
 saveWorkbook(wb, excel_file, overwrite = TRUE)
+
+

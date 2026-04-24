@@ -1,26 +1,27 @@
+
+
+# MANUAL INPUT
+# # # #
+# library(vroom)
+# args = as.list(c("Neutrophils","PAPS"))
+# args[1] <-"Sjogrens"
+# args[2] <-"Healthy"
+# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
+# 
+# directory <- args[[3]]
+# selection_samples = "NO"
+# Cell_type = "Bmemory_neg"
+# DIR_METADATA <- readLines("C:/Users/crist/Desktop/BiomiX2.5/directory.txt")
+# i = 1
+# renv::load(paste(directory,"_INSTALL",sep="/"))
+
+
 library(vroom)
 library(dplyr)
 library(stringr)
 library(rlist)
 library(tibble)
 library(readxl)
-
-# MANUAL INPUT
-# # # #
-# library(vroom)
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# 
-# directory <- args[[3]]
-# selection_samples = "NO"
-# Cell_type = "populations"
-# DIR_METADATA <- readLines("C:/Users/crist/Desktop/BiomiX2.5/directory.txt")
-# i = 1
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-
-
 
 setwd(directory)
 
@@ -93,7 +94,6 @@ if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
 process_metadata_matrix(matrix, Metadata_total)
         
 
-#The metadata file contains the metadata of only the samples within the omics
 #Excluding the ones not included in the original metadata file.
 Metadata <- Metadata_Bcell
 Metadata_individual=NULL

@@ -1,7 +1,14 @@
 # Code to integrate data using SNF and evaluate the clustering results
 # Author: Jessica Gliozzo
 
+# # #MANUAL INPUT
+# args = as.list(c("BLymphocytes","SLE"))
+# args[1] <-"mutated"
+# args[2] <-"unmutated"
+# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 
+# directory <-args[3]
+# renv::load(paste(directory,"_INSTALL",sep="/"))
 
 # Load libraries----
 library("dplyr");
@@ -343,6 +350,10 @@ make_graph(c(sim_mat, list(W_int=W_int)), gt.clust=gt.clust,
 # }
 
 print(enrich_vars)
+
+valid_enrich_vars <- enrich_vars[enrich_vars != "X"]
+
+if (length(valid_enrich_vars) > 0) {
 METADATA_alluvial <- data$metadata[, enrich_vars, drop=F]
 rownames(METADATA_alluvial) <- data$metadata$ID
 
@@ -351,6 +362,8 @@ rownames(METADATA_alluvial) <- data$metadata$ID
 plot.alluvial(clustering[,as.character(nc_estim$nc_estim), drop=F], gt.clust, 
               METADATA_alluvial, 
               save_path="./clustering_metrics")
+
+}
 
 # Which are the most important features for integration?----
 K.snf_vec <- rep(K.snf, length(data$data)) # K for each modality

@@ -3,10 +3,10 @@
 #
 # # #MANUAL INPUT
 # args = as.list(c("BLymphocytes","SLE"))
-# args[1] <-"RA"
-# args[2] <-"CTRL"
+# args[1] <-"PTB"
+# args[2] <-"HC"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-
+# 
 # directory <-args[3]
 # renv::load(paste(directory,"_INSTALL",sep="/"))
 
@@ -35,7 +35,7 @@ Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_
 DIR_METADATA <- readLines(paste(directory,"directory.txt",sep="/"))
 Cell_type <- as.character(COMMAND_MOFA[1,2])
 Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
-n_factor<-as.numeric(COMMAND_MOFA[3,2])
+n_factors<-as.numeric(COMMAND_MOFA[3,2])
 n_iteration <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_DIABLO_OPTIONS[2])
 selection_features_DIABLO <- as.character(COMMAND_ADVANCED$ADVANCED_OPTION_DIABLO_OPTIONS[1])
 design_input <- as.character(COMMAND_ADVANCED$ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN[1])
@@ -128,7 +128,9 @@ Transcriptomics_processing <-function(annotation,matrix,mer){
         list <-list()
         matrix<-merge(matrix, MART, by.x="ID", by.y="Gene.stable.ID")
         matrix<- matrix %>% arrange(desc(variance))
-        matrix <-matrix[1:Max_features,]
+        if(nrow(matrix) > Max_features){
+          matrix <-matrix[1:Max_features,]
+        }
         
         Bcell_RNAseq_EASY <- paste(matrix$`Gene name`, matrix$ID, sep = "/")
         Bcell_RNAseq_VIEW <- as.character(matrix$`Gene name`)
@@ -155,7 +157,9 @@ Methylomics_processing <-function(annotation,matrix,metadata,mer){
         annotation <- annotation[,c("gene","CpG_island")]
         matrix<-merge(matrix, annotation, by.x="ID", by.y="CpG_island")
         
-        matrix <-matrix[1:Max_features,]
+        if(nrow(matrix) > Max_features){
+          matrix <-matrix[1:Max_features,]
+        }
         
         Methylome_WB_VIEW <- as.character(matrix$gene)
         Methylome_WB_EASY <- paste(matrix$ID, matrix$gene, sep = "/")
@@ -255,7 +259,8 @@ if(COMMAND$DATA_TYPE[i] == "Undefined"){
 X <- lapply(myList, as.data.frame)
 
 # Step 2: Find common rows
-common_rows <- Reduce(function(x, y) intersect(rownames(x), rownames(y)), myList)
+row_names_list <- lapply(myList, rownames)
+common_rows <- Reduce(intersect, row_names_list)
 
 X <- lapply(X, function(df) {
         x<-df[rownames(df) %in% common_rows,]
@@ -296,15 +301,79 @@ if (design_input != "X"){
 
 
 
-result.diablo <- block.plsda(X, Y, ncomp = n_factor, max.iter = n_iteration, design = design_full ) # run the method
+
+#ITERATIONS
+
+# PARAMETERS
+factors <- 50
+penalty <- 0
+
+best_of_you <- matrix(0, nrow = 1, ncol = 3)
+colnames(best_of_you) <- c("n_significant_factors", "summed_p.adj", "n_factors")
+
+# Decide modalità
+if (n_factors == 0) {
+  iter_vec <- 3:factors     # modalità automatica
+  MODE <- "Automatic"
+} else {
+  iter_vec <- n_factors # modalità manuale
+  MODE <- "monofactor"
+}
+
+
+
+
+#Blcock to filter the variables excluded by near.zero.var = TRUE parameter
+
+library(mixOmics)
+
+# Step 1 - Identifica le colonne NZV
+nzv_results <- lapply(X, function(block) {
+  nzv <- mixOmics:::nearZeroVar(block)
+  return(nzv$Position)
+})
+
+for (i in 1:length(nzv_results)) {
+  var_name <- paste("INPUT", i, "_visual", sep = "")
+  original <- get(var_name)
+  
+  rm_idx <- nzv_results[[i]]
+  
+  if (length(rm_idx) == 0) {
+    filtered <- original
+  } else {
+    filtered <- original[-rm_idx]
+  }
+  
+  assign(var_name, filtered)
+}
+
+
+
+
+
+
+
+
+# LOOP UNICO
+for (iter in iter_vec) {
+  
+  
+  n_factors = iter
+  
+
+
+
+
+result.diablo <- block.plsda(X, Y, ncomp = n_factors, max.iter = n_iteration, design = design_full,near.zero.var = TRUE ) # run the method
 
 
 
 #DOWNSTREAM ANALYSIS
 
-dir.create(path = paste(directory,"/Integration/OUTPUT/","DIABLO", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+dir.create(path = paste(directory,"/Integration/OUTPUT/","DIABLO", "_", args[1] ,"_vs_", args[2], "_",as.numeric(n_factors),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
-directory2 <- paste(directory,"/Integration/OUTPUT/","DIABLO", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") 
+directory2 <- paste(directory,"/Integration/OUTPUT/","DIABLO", "_", args[1] ,"_vs_", args[2], "_",as.numeric(n_factors),"_factors" ,sep="") 
 setwd(directory2)
 
 pdf(file= paste("DIABLO", "_", args[1] ,"_vs_", args[2],".pdf", sep =""), width = 20, height = 9)
@@ -347,6 +416,10 @@ variance_data <- total[,-ncol(total)] %>%
 # Calculate limits for color scaling
 min_r2 <- min(variance_data$VarianceExplained) * 100
 max_r2 <- max(variance_data$VarianceExplained) * 100
+
+# Fix component order
+variance_data$Component <- factor(variance_data$Component, 
+                                  levels = unique(variance_data$Component[order(as.numeric(gsub("\\D", "", variance_data$Component)))]))
 
 # Create a grid plot (heatmap)
 p <-ggplot(variance_data, aes(x = Omics, y = Component)) + 
@@ -501,6 +574,11 @@ plot_data <- do.call(rbind, lapply(names(variates), function(block) {
 # Metadata (replace `METADATA` with your actual metadata object)
 plot_data <- merge(plot_data, METADATA, by.x = "Sample", by.y = "ID")
 
+# Fix component order
+plot_data$Component <- factor(plot_data$Component, 
+                                  levels = unique(plot_data$Component[order(as.numeric(gsub("\\D", "", plot_data$Component)))]))
+
+
 # Create the violin plot
 violin_plot <- ggplot(plot_data, aes(x = Component, y = Score, fill = Block)) +
         geom_violin(alpha = 0.7, scale = "width") +
@@ -515,6 +593,7 @@ violin_plot <- ggplot(plot_data, aes(x = Component, y = Score, fill = Block)) +
         theme(
                 strip.text = element_text(size = 12),
                 axis.text = element_text(size = 10),
+                axis.text.x = element_text(angle = 45, hjust = 1),
                 legend.position = "bottom"
         ) +
         scale_fill_brewer(palette = "Set2") +
@@ -523,7 +602,30 @@ violin_plot <- ggplot(plot_data, aes(x = Component, y = Score, fill = Block)) +
 # Display the plot
 print(violin_plot)
 
-
+violin_plot2 <-ggplot(
+  plot_data,
+  aes(x = Component, y = Score, fill = CONDITION)
+) +
+  geom_violin(
+    position = position_dodge(width = 0.8),
+    scale = "width",
+    alpha = 0.8
+  ) +
+  facet_wrap(~ Block, scales = "free_y", nrow = 1) +
+  theme_classic() +
+  labs(
+    title = "DIABLO scores by component and condition",
+    x = "Component",
+    y = "Score"
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  theme(
+    strip.text = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+print(violin_plot2)
 
 
 #TOP CONTRIBUTORS PLOT
@@ -539,144 +641,206 @@ library(tidyr)
 # Extracting the loadings for each block from the plsda_result
 # Let's say plsda_result$loadings contains a list with the loadings for each block
 
-for (val in (1:ncol(result.diablo$loadings$Y))){
-loadings_data <- lapply(result.diablo$loadings, function(x) data.frame(Variable = rownames(x), Loading = x[,val]))
+#for (val in (1:ncol(result.diablo$loadings$Y))){
+#loadings_data <- lapply(result.diablo$loadings, function(x) data.frame(Variable = rownames(x), Loading = x[,val]))
 
 # Assign names to the blocks
-names(loadings_data) <- names(result.diablo$loadings)
+
 
 
 results2<-results[!results$block == "Y",]
 results2 <- results2 %>%
         mutate(Factors = gsub("comp", "factor_", Factors))
 
+# Fattori con almeno una omica significativa
+n_factors_significant <- results2 %>%
+  group_by(Factors) %>%
+  summarise(any_significant = any(p.adj < 0.05)) %>%
+  filter(any_significant) %>%
+  nrow()
+significant_factors <- results2 %>%
+  group_by(Factors) %>%
+  filter(any(p.adj < 0.05)) %>%
+  pull(Factors) %>%
+  unique()
+
 nice<-which(results2$p.adj < 0.05)
+
+#BLOCK SELECTION BEST FACTOR
+best<-length(significant_factors)
+if (length(significant_factors) != 0) {
+  best2 <- sum(results2[which(results2$p.adj < 0.05),][,2])
+}else{best2 <- 100}
+best3 <- paste(n_factors,"_factors", sep="")
+best_of_you <- rbind(c(best, best2, best3),best_of_you)
+
+
 nice<-unique(results2$Factors[nice])
+
+
 if (length(nice) != 0){
-        
-        
-        pdf(file= paste("Distribution_factors_contributions_", args[1] ,"_vs_", args[2],".pdf", sep =""), width = 10, height = 7)
-        
-        for (ir in nice) {
-                
-                y = ir #Factor of interest
-                
-                print(paste("Significant factor identified:",y,sep=" "))
-
-                #TO IMPLEMENT THE SAMPLE WEIGHT IN EACH FACTOR.
-                
-                library(tidyr)
-                library(dplyr)
-                
-                # Step 1: Replace "Comp" with "Factor" in the Component column
-                plot_data <- plot_data %>%
-                        mutate(Component = gsub("comp", "Factor", Component))
-                
-                # Step 2: Create a new column combining Component and Omics
-                df_wide <- as_tibble(plot_data) %>% 
-                        filter(Block != "Y") %>% 
-                        dplyr::select(Sample, Score, Component, Block) %>% 
-                        unite("Factor", Component, Block, sep = "_")
-                
-                # Step 3: Reshape to wide format
-                df_wide <- df_wide %>%
-                        pivot_wider(names_from = Factor, values_from = Score) 
-                
-                # Step 4: Reorder columns so that Factor1_* comes before Factor2_*
-                column_order <- c("Sample", sort(setdiff(names(df_wide), "Sample")))
-                
-                df_wide <- df_wide %>%
-                        dplyr::select(all_of(column_order)) %>%
-                        dplyr::rename(ID = Sample)
-                        
-                
-                # Print result
-                write.table(df_wide, "DIABLO_FACTORS_WEIGHTS.tsv",quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
-                
-                
- 
-                #Iteration to save the top contributors by 95% quantile and user threshold.
-                for (dimen in unique(results2$block)){
-                        
-
-                        weights_B <- as.data.frame(loadings_data[[dimen]])
-                        a1 <- weights_B
-                        colnames(a1)[2] <- "weights"
-                        colnames(a1)[1] <- "features"
-                        a1$weights<- a1$weights/max(abs(a1$weights))
-
-                        a1$abs_weight<-abs(a1$weights)
-                        nov<-quantile(a1$abs_weight, probs=0.95)
-                        
-                        p <-ggplot(a1, aes(x=abs_weight)) +
-                                geom_density(color="darkblue", fill="lightblue")
-                        #geom_histogram(fill="#69b3a2", color="#e9ecef", alpha=0.7, bins=1000) + stat_bin(bins = 1000)
-                        
-                        p<- p + labs(title=paste( y ," weights in_", dimen, sep="" ))
-                        
-                        p <-p + theme(text=element_text(size=12,face = "bold"), plot.title = element_text(hjust = 0.5, size=25,face = "bold"))
-                        
-                        p <- p + geom_vline(aes(xintercept=nov))
-                        #p <- p + geom_vline(aes(xintercept=cin))
-                        print(p)
-                        
-                        pos<-a1[a1$abs_weight > nov,]
-                        pos
-                        pos<-pos[order(pos$abs_weight),]
-                        
-                        #setwd("/home/cristia/Scrivania/PhD/Bioinfo/MOFA_integration/Databases_copia/Results_Optimization/MOFA_14_factors/Weights_5_percent") 
-                        poss<-pos$weights > Contribution_threshold
-                        negg<-pos$weights < -Contribution_threshold
-                        possis <- as.data.frame(pos[poss,])
-                        neggis <- as.data.frame(pos[negg,])
-                        possi <- as.data.frame(pos[poss,2])
-                        neggi <- as.data.frame(pos[negg,2])
-                        
-                        write.table(possis, paste(dimen, "_",COMMAND$DATA_TYPE[which(COMMAND$LABEL == dimen)], "_pos_",y,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
-                        write.table(neggis, paste(dimen, "_",COMMAND$DATA_TYPE[which(COMMAND$LABEL == dimen)], "_neg_",y,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE,sep = "\t")
-                        
-                        
-                }
-                
-                
-        }
-        dev.off()
+  
+  
+  pdf(file= paste("Distribution_factors_contributions_", args[1] ,"_vs_", args[2],".pdf", sep =""), width = 10, height = 7)
+  
+  for (ir in nice) {
+    
+    y = ir #Factor of interest
+    
+    print(paste("Significant factor identified:",y,sep=" "))
+    
+    #TO IMPLEMENT THE SAMPLE WEIGHT IN EACH FACTOR.
+    
+    library(tidyr)
+    library(dplyr)
+    
+    # Step 1: Replace "Comp" with "Factor" in the Component column
+    plot_data <- plot_data %>%
+      mutate(Component = gsub("comp", "Factor", Component))
+    
+    # Step 2: Create a new column combining Component and Omics
+    df_wide <- as_tibble(plot_data) %>% 
+      filter(Block != "Y") %>% 
+      dplyr::select(Sample, Score, Component, Block) %>% 
+      unite("Factor", Component, Block, sep = "_")
+    
+    # Step 3: Reshape to wide format
+    df_wide <- df_wide %>%
+      pivot_wider(names_from = Factor, values_from = Score) 
+    
+    # Step 4: Reorder columns so that Factor1_* comes before Factor2_*
+    column_order <- c("Sample", sort(setdiff(names(df_wide), "Sample")))
+    
+    df_wide <- df_wide %>%
+      dplyr::select(all_of(column_order)) %>%
+      dplyr::rename(ID = Sample)
+    
+    
+    # Print result
+    write.table(df_wide, "DIABLO_FACTORS_WEIGHTS.tsv",quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+    
+    
+    val <-as.numeric(strsplit(y,"_")[[1]][2])
+    
+    #Iteration to save the top contributors by 95% quantile and user threshold.
+    for (dimen in unique(results2$block)){
+      
+      
+      loadings_data <- lapply(result.diablo$loadings, function(x) data.frame(Variable = rownames(x), Loading = x[,val]))
+      names(loadings_data) <- names(result.diablo$loadings)
+      weights_B <- as.data.frame(loadings_data[[dimen]])
+      a1 <- weights_B
+      colnames(a1)[2] <- "weights"
+      colnames(a1)[1] <- "features"
+      a1$weights<- a1$weights/max(abs(a1$weights))
+      
+      a1$abs_weight<-abs(a1$weights)
+      nov<-quantile(a1$abs_weight, probs=0.95)
+      
+      p <-ggplot(a1, aes(x=abs_weight)) +
+        geom_density(color="darkblue", fill="lightblue")
+      #geom_histogram(fill="#69b3a2", color="#e9ecef", alpha=0.7, bins=1000) + stat_bin(bins = 1000)
+      
+      p<- p + labs(title=paste( y ," weights in_", dimen, sep="" ))
+      
+      p <-p + theme(text=element_text(size=12,face = "bold"), plot.title = element_text(hjust = 0.5, size=25,face = "bold"))
+      
+      p <- p + geom_vline(aes(xintercept=nov))
+      #p <- p + geom_vline(aes(xintercept=cin))
+      print(p)
+      
+      pos<-a1[a1$abs_weight > nov,]
+      #print(head(pos))
+      pos<-pos[order(pos$abs_weight),]
+      
+      #setwd("/home/cristia/Scrivania/PhD/Bioinfo/MOFA_integration/Databases_copia/Results_Optimization/MOFA_14_factors/Weights_5_percent") 
+      poss<-pos$weights > Contribution_threshold
+      negg<-pos$weights < -Contribution_threshold
+      possis <- as.data.frame(pos[poss,])
+      neggis <- as.data.frame(pos[negg,])
+      possi <- as.data.frame(pos[poss,2])
+      neggi <- as.data.frame(pos[negg,2])
+      
+      write.table(possis, paste(dimen, "_",COMMAND$DATA_TYPE[which(COMMAND$LABEL == dimen)], "_pos_",y,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+      write.table(neggis, paste(dimen, "_",COMMAND$DATA_TYPE[which(COMMAND$LABEL == dimen)], "_neg_",y,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE,sep = "\t")
+      
+      
+    }
+    
+    # Combine all loadings into a single data frame
+    combined_loadings <- bind_rows(lapply(names(loadings_data), function(block) {
+      data <- loadings_data[[block]]
+      data$Omics <- block
+      return(data)
+    }))
+    
+    # Normalize 'Loading' within each 'Omics' group
+    combined_loadings <- combined_loadings %>%
+      group_by(Omics) %>%
+      mutate(weights = Loading / max(abs(Loading), na.rm = TRUE)) %>%
+      ungroup()
+    
+    # Select top N loadings for each block (e.g., top 3 variables)
+    top_loadings <- combined_loadings %>%
+      group_by(Omics) %>%
+      top_n(25, abs(Loading)) %>%
+      arrange(Omics, desc(abs(Loading)))
+    
+    # Plotting top loadings using ggplot2
+    top_loadings$Variable <- substr(top_loadings$Variable, 1, 60)
+    p <-ggplot(top_loadings, aes(x = reorder(Variable, weights), y = weights, fill = Omics)) +
+      geom_bar(stat = "identity", show.legend = FALSE) +
+      facet_wrap(~ Omics, scales = "free_y") + 
+      coord_flip() + 
+      labs(title = paste("Top Loadings Factor ", val, " for Each Omics in DIABLO Model"),
+           x = "Variable", y = "Loading") +
+      theme_minimal() +
+      theme(axis.text = element_text(size = 4), 
+            axis.title = element_text(size = 14), 
+            plot.title = element_text(size = 16, hjust = 0.5))
+    
+    print(p)
+    
+    
+    
+  }
+  dev.off()
 }
+
 
 
 # Combine all loadings into a single data frame
 combined_loadings <- bind_rows(lapply(names(loadings_data), function(block) {
-        data <- loadings_data[[block]]
-        data$Omics <- block
-        return(data)
+  data <- loadings_data[[block]]
+  data$Omics <- block
+  return(data)
 }))
 
 # Normalize 'Loading' within each 'Omics' group
 combined_loadings <- combined_loadings %>%
-        group_by(Omics) %>%
-        mutate(weights = Loading / max(abs(Loading), na.rm = TRUE)) %>%
-        ungroup()
+  group_by(Omics) %>%
+  mutate(weights = Loading / max(abs(Loading), na.rm = TRUE)) %>%
+  ungroup()
 
 # Select top N loadings for each block (e.g., top 3 variables)
 top_loadings <- combined_loadings %>%
-        group_by(Omics) %>%
-        top_n(25, abs(Loading)) %>%
-        arrange(Omics, desc(abs(Loading)))
+  group_by(Omics) %>%
+  top_n(25, abs(Loading)) %>%
+  arrange(Omics, desc(abs(Loading)))
 
 # Plotting top loadings using ggplot2
 p <-ggplot(top_loadings, aes(x = reorder(Variable, weights), y = weights, fill = Omics)) +
-        geom_bar(stat = "identity", show.legend = FALSE) +
-        facet_wrap(~ Omics, scales = "free_y") + 
-        coord_flip() + 
-        labs(title = paste("Top Loadings Factor ", val, " for Each Omics in DIABLO Model"),
-             x = "Variable", y = "Loading") +
-        theme_minimal() +
-        theme(axis.text = element_text(size = 12), 
-              axis.title = element_text(size = 14), 
-              plot.title = element_text(size = 16, hjust = 0.5))
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  facet_wrap(~ Omics, scales = "free_y") + 
+  coord_flip() + 
+  labs(title = paste("Top Loadings Factor ", n_factors, " for Each Omics in all DIABLO Model"),
+       x = "Variable", y = "Loading") +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14), 
+        plot.title = element_text(size = 16, hjust = 0.5))
 
 print(p)
-}
 
 
 
@@ -687,7 +851,7 @@ line<-round(line,2)
 total<-apply(line,2,sum)
 total<-rbind(line,total)
 rownames(total)[nrow(total)] <- "total"
-write.table(total,file=paste("DIABLO_MATRIX", "_", args[1] ,"_vs_", args[2],"_",n_factor,"_factors.tsv", sep =""))
+write.table(total,file=paste("DIABLO_MATRIX", "_", args[1] ,"_vs_", args[2],"_",n_factors,"_factors.tsv", sep =""))
 
 
 
@@ -708,6 +872,11 @@ total_df <- as.data.frame(total) %>%
 # Remove the 'total' row if not needed for the plot
 total_df <- total_df[total_df$Component != "total", ]
 
+# Fix component order
+total_df$Component <- factor(total_df$Component, 
+                                  levels = unique(total_df$Component[order(as.numeric(gsub("\\D", "", total_df$Component)))]))
+
+
 # Plot the data
 p <- ggplot(total_df, aes(x = Component, y = VarianceExplained * 100, fill = Omics)) +
         geom_bar(stat = "identity", position = "dodge") +
@@ -726,4 +895,56 @@ p <- ggplot(total_df, aes(x = Component, y = VarianceExplained * 100, fill = Omi
 print(p)
 
 dev.off()
+
+#IF % explained by last factor < 1 % add one penality
+#When penality = 3 the automatic loop is stopped.
+
+min_r2
+
+
+if (min_r2 < 1){
+  penalty = penalty + 1
+  print(paste("PENALTY = ",penalty, sep=""))
+  if (penalty == 3 ){
+    break
+  }
+}
+
+print(paste("PENALTY = ",penalty, sep=""))
+
+
+}
+
+
+#SAVING THE FACTORS PERFORMANCE ONLY IF IN AUTOMATIC MODE ()
+if (MODE == "Automatic"){
+
+best_of_you <- best_of_you[-nrow(best_of_you),]
+best_of_you <- as.data.frame(best_of_you)
+best_of_you <- best_of_you[order(-as.numeric(best_of_you$n_significant_factors) , as.numeric(best_of_you$summed_p.adj)),]
+nice<-duplicated(best_of_you$n_factors)
+best_of_you<-best_of_you[!nice,]
+
+top <- best_of_you[1:3,3]
+
+#SAVE THE RESULTS IN THE OUTPUT FOLDER WITH THE NAME OF THE ANALYSIS + AUTOMATIC
+
+write.table(best_of_you,file= paste(directory,"/Integration/OUTPUT/","AUTOMATIC_SEARCH_BEST_FACTORS", "_", args[1] ,"_vs_", args[2] ,"_DIABLO.tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+line="#ONLY THE TOP 3 MOFA MODELS ARE RETAINED#"
+write(line,file= paste(directory,"/Integration/OUTPUT/","AUTOMATIC_SEARCH_BEST_FACTORS", "_", args[1] ,"_vs_", args[2],"_DIABLO.tsv" ,sep=""),append=TRUE)
+#detection total significant factors
+files <- grep(paste("DIABLO", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
+saved=NULL
+for(to in top){
+  saved<-append(files[grep(paste("*_",to,sep=""), files)], saved)
+}
+
+files_to_elim<-files[!files %in% saved]
+
+for(to in files_to_elim){
+  if (dir.exists(paste(directory,"/Integration/OUTPUT/",to, sep=""))) {
+    unlink(paste(directory,"/Integration/OUTPUT/",to, sep=""), recursive = TRUE)
+  }}
+}
+
 

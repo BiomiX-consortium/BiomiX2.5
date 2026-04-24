@@ -1,10 +1,6 @@
 process_metadata_matrix <- function(matrix, Metadata_total) {
   # --- Original code, unchanged in logic ---
-  Metadata_Bcell <- Metadata_total
-  Metadata_Bcell <- Metadata_Bcell[order(Metadata_Bcell$ID), ]
-  
-  matrixi <- matrix[, 2:ncol(matrix)]
-  matrix[, 2:ncol(matrix)] <- matrixi[, order(colnames(matrixi))]
+  matrix <- matrix[order(rownames(matrix)),]
   matrix <- as.data.frame(matrix)
   
   Metadata_Bcell <- Metadata_total
@@ -59,7 +55,7 @@ apply_metadata_filter <- function(Metadata, matrix, COMMAND_ADVANCED) {
                                       NA)
         
         Metadata <- Metadata[comparison_operator(To_filter, value_threshold), ]
-        matrix <- matrix[, comparison_operator(To_filter, value_threshold)]
+        matrix <- matrix[comparison_operator(To_filter, value_threshold),]
         
       } else if (as.character(COMMAND_ADVANCED[2, meta_filter]) == "Factors") {
         To_filter <- as.character(unlist(Metadata[, COLNAME]))
@@ -75,7 +71,7 @@ apply_metadata_filter <- function(Metadata, matrix, COMMAND_ADVANCED) {
         
         Metadata <- Metadata[comparison_operator(To_filter, value_threshold), ]
         if (!is.null(matrix)) {
-          matrix <- matrix[, comparison_operator(To_filter, value_threshold)]
+          matrix <- matrix[comparison_operator(To_filter, value_threshold),]
         }
       }
       
@@ -215,7 +211,7 @@ DMS_TESTED <- function(Condition2){
   pval_t=NULL
   for (i in 1:ncol(SLE)) {
     res_t <-t.test(CON[,i],SLE[,i], alternative = "two.sided") 
-    pval_t <-append(pval_t, res[["p.value"]])
+    pval_t <-append(pval_t, res_t[["p.value"]])
   }
   
   

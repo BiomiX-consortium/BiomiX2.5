@@ -11,6 +11,9 @@
 # Cell_type <- "MOFA_INTEGRATION"
 # renv::load(paste(directory,"_INSTALL",sep="/"))
 
+options(timeout = 6000)
+
+
 
 library(vroom)
 library(dplyr)

@@ -380,7 +380,11 @@ make_graph(c(sim_mat, list(W_int=W_int)), gt.clust=gt.clust,
 #     plot_ext.val.idx(ext.val.idx, nc_estim$nc_range)
 # }
 
+print(enrich_vars)
 
+valid_enrich_vars <- enrich_vars[enrich_vars != "X"]
+
+if (length(valid_enrich_vars) > 0) {
 METADATA_alluvial <- data$metadata[, enrich_vars, drop=F]
 rownames(METADATA_alluvial) <- data$metadata$ID
 
@@ -390,6 +394,7 @@ plot.alluvial(clustering[,as.character(nc_estim$nc_estim), drop=F], gt.clust,
               METADATA_alluvial, 
               save_path="./clustering_metrics")
 
+}
 
 # Which are the most important features for integration?----
 feat_imp <- compute_feature_importance(data$data, pred.clust, K=K.nemo_vec, sigma=sigma)

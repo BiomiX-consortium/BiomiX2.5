@@ -29,9 +29,9 @@ library(reticulate)
 MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
 myList <- list()
 
-COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
-COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
+COMMAND <- combined_json[["COMMANDS"]]
+COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
 Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
 Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
 Cell_type == COMMAND_MOFA[1,2]
@@ -138,7 +138,9 @@ return(list)
 Transcriptomics_processing <-function(annotation,matrix,mer){
         matrix<-merge(matrix, MART, by.x="ID", by.y="Gene.stable.ID")
         matrix<- matrix %>% arrange(desc(variance))
-        matrix <-matrix[1:Max_features,]
+        if(nrow(matrix) > Max_features){
+          matrix <-matrix[1:Max_features,]
+        }
         
         Bcell_RNAseq_EASY <- paste(matrix$`Gene name`, matrix$`Gene.name`, sep = "/")
         Bcell_RNAseq_VIEW <- as.character(matrix$`Gene name`)
@@ -188,7 +190,9 @@ Methylomics_processing <-function(annotation,matrix,metadata,mer){
         annotation <- annotation[,c("gene","CpG_island")]
         matrix<-merge(matrix, annotation, by.x="ID", by.y="CpG_island")
         
-        matrix <-matrix[1:Max_features,]
+        if(nrow(matrix) > Max_features){
+          matrix <-matrix[1:Max_features,]
+        }
         
         Methylome_WB_VIEW <- as.character(matrix$gene)
         Methylome_WB_EASY <- paste(matrix$ID, matrix$gene, sep = "/")

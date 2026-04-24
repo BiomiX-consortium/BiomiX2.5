@@ -709,7 +709,7 @@ write_gct_file <- function(DGE3, dds, Mart, GENE_ANNOTATION, NORMALIZATION, args
         
         colnames(tab)[1] <- "NAME"
         tab$Description <- "NA"
-        tab <- tab[, c(1, ncol(tab), 3:(ncol(tab)-1))]
+        tab <- tab[, c(1, ncol(tab), 2:(ncol(tab)-1))]
         
         gct_file <- file.path(directory2, paste0(args[1], comparison, "_", args[2], "_", Cell_type, "_RAW.gct"))
         if (file.exists(gct_file)) file.remove(gct_file)

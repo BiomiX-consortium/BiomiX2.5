@@ -35,20 +35,56 @@ load_annotation <- function(ANNOTATION, i, COMMAND_ADVANCED) {
       if (file.exists(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1])) {
         
         if (grepl("\\.xlsx$|\\.xls$", COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1])) {
-          annotation <- readxl::read_excel(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1])
+          annotation <- readxl::read_excel(
+            COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1]
+          )
           print("Annotation ms1 Excel File read successfully!")
         } else {
-          annotation <- vroom::vroom(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1], delim = "\t", col_names = TRUE)
+          annotation <- vroom::vroom(
+            COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1],
+            delim = "\t",
+            col_names = TRUE
+          )
         }
         
-        if (ncol(annotation) == 3) {
-          if (colnames(annotation)[3] == "RT_sec") {
-            annotation$RT_min <- as.numeric(annotation$RT_sec) / 60
-          }
-          if (colnames(annotation)[3] == "RT_min") {
-            annotation$RT_sec <- as.numeric(annotation$RT_min) * 60
-          }
+        # ---- Normalize annotation columns ----
+        
+        colnames(annotation) <- trimws(colnames(annotation))
+        
+        # Mandatory columns
+        required_cols <- c("name", "m/z")
+        missing_required <- setdiff(required_cols, colnames(annotation))
+        if (length(missing_required) > 0) {
+          stop(
+            paste("Annotation file is missing required column(s):",
+                  paste(missing_required, collapse = ", "))
+          )
         }
+        
+        has_RT_sec <- "RT_sec" %in% colnames(annotation)
+        has_RT_min <- "RT_min" %in% colnames(annotation)
+        
+        # At least one RT column must exist
+        if (!has_RT_sec && !has_RT_min) {
+          stop("Annotation file must contain either RT_sec or RT_min")
+        }
+        
+        # Recalculate missing RT column
+        if (has_RT_sec && !has_RT_min) {
+          annotation$RT_min <- as.numeric(annotation$RT_sec) / 60
+        }
+        
+        if (has_RT_min && !has_RT_sec) {
+          annotation$RT_sec <- as.numeric(annotation$RT_min) * 60
+        }
+        
+        # Force numeric RT columns
+        annotation$RT_sec <- as.numeric(annotation$RT_sec)
+        annotation$RT_min <- as.numeric(annotation$RT_min)
+        
+        # Enforce final column order and drop all others
+        annotation <- annotation[, c("name", "m/z", "RT_sec", "RT_min")]
+        
       }
     }
   }
@@ -68,11 +104,17 @@ load_annotation <- function(ANNOTATION, i, COMMAND_ADVANCED) {
 
 #HMDB METABOLITE FILTERING 
 
-load_biofluid_metabolites <- function(label, biofluid_name, local_filename, url, variable_name, directory2) {
+load_biofluid_metabolites <- function(label, biofluid_name, local_filename, url, variable_name, directory2, directory) {
   # Checks if a biofluid is mentioned in the label, then loads (or downloads) the metabolite file.
   
   if (stringr::str_detect(label, stringr::fixed(biofluid_name, ignore_case = TRUE))) {
-    if (file.exists(local_filename)) {
+    
+    repo_path <- paste(directory, "Integration/x_BiomiX_DATABASE/HMDB_source_filtering", local_filename, sep = "/")
+    
+    if (file.exists(repo_path)) {
+      print("File available in local repository, using the repository version")
+      metabolite_data <- vroom::vroom(repo_path, delim = ",", col_names = TRUE)
+    } else if (file.exists(paste(directory2, local_filename, sep = "/"))) {
       print("File available locally, using the local version")
       metabolite_data <- vroom::vroom(file.path(directory2, local_filename), delim = "\t", col_names = TRUE)
     } else {
@@ -82,10 +124,12 @@ load_biofluid_metabolites <- function(label, biofluid_name, local_filename, url,
       metabolite_data <- as.data.frame(metabolite_data)
       write.table(metabolite_data, file.path(directory2, local_filename), quote = FALSE, row.names = FALSE, sep = "\t")
     }
+    
     # Assign to global environment with dynamic name
     assign(variable_name, metabolite_data, envir = .GlobalEnv)
   }
 }
+
 
 
 
@@ -112,17 +156,16 @@ process_sample_selection <- function(selection_samples, Cell_type, Metadata_tota
     
   } else {
     print("No samples selection")
-    Metadata_Bcell <- Metadata_total
-    Metadata_Bcell <- Metadata_Bcell[order(Metadata_Bcell$ID), ]
-    matrixi <- matrix[, 2:ncol(matrix)]
-    matrix[, 2:ncol(matrix)] <- matrixi[, order(colnames(matrixi))]
+    matrix <- matrix[order(rownames(matrix)),]
     matrix <- as.data.frame(matrix)
     
     Metadata_Bcell <- Metadata_total
     num <- which(matrix$ID %in% Metadata_Bcell$ID)
     Identifier <- matrix$ID
     matrix <- as.matrix(matrix[num, ])
+    
     print(Metadata_Bcell$ID)
+    
     num <- which(Metadata_Bcell$ID %in% matrix[, 1])
     Metadata_Bcell <- Metadata_Bcell[num, ]
     
@@ -872,7 +915,6 @@ run_msms_filtering <- function(COMMAND_ADVANCED, directory, MS2_databases) {
 
 
 
-
 # ---- Function to Select Peaks and Build Annotation ----
 build_msms_annotation <- function(directory, Cell_type, args, param, annotate_result5) {
   
@@ -897,6 +939,9 @@ build_msms_annotation <- function(directory, Cell_type, args, param, annotate_re
       annotate_result5[[dat]]@match.result$MS2.spectra.name %in% xx, ]
     
     y <- NULL
+    
+    saved<- saved[!duplicated(saved$MS2.spectra.name),]
+    saved <- saved[saved$MS2.spectra.name %in% names(annotate_result5[[dat]]@identification.result),]
     
     for (pe in seq(1:length(rownames(saved)))) {
       col_names <- colnames(annotate_result5[[dat]]@identification.result[[pe]])
@@ -1049,7 +1094,7 @@ retrieve_advanced_batch_annotation <- function(directory2, Cell_type, args, data
     # Ion_mode = "positive"
     # tolerance = 10
     # MASSI <- c(399.3367, 421.31686, 315.2424, 337.2234, 280.2402)
-    # RT <- c(18.842525, 18.842525, 8.144917, 8.144917, 28.269503, 4.021555)
+    # RTi <- c(18.842525, 18.842525, 8.144917, 8.144917, 28.269503, 4.021555)
     
     
     # advanced_batch_df <- advanced_batch_search(
@@ -1073,6 +1118,9 @@ retrieve_advanced_batch_annotation <- function(directory2, Cell_type, args, data
     #         retention_times     = "[2.316083333,0.948808333]",
     #         all_retention_times = '[]'
     # )
+    
+    options(timeout = 10000)  # seconds
+    
     
     advanced_batch_df <- advanced_batch_search(
       cmm_url = "https://ceumass.eps.uspceu.es/api/v3/advancedbatch",

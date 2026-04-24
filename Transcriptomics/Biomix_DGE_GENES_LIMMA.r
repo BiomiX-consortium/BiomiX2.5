@@ -10,8 +10,8 @@
 # MANUAL INPUT
 # library(vroom)
 # args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"C1"
-# args[2] <-"C4"
+# args[1] <-"CTRL"
+# args[2] <-"RA"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 # #
 # directory <- args[3]
@@ -19,7 +19,7 @@
 # i=1
 # selection_samples = "NO"
 # purity_filter = "NO"
-# Cell_type = "RNA"
+# Cell_type = "Monocytes"
 # setwd(directory[[1]])
 # COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
 # COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")

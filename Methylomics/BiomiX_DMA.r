@@ -251,4 +251,4 @@ if (STATISTICS == "YES"){
     BASSI = BASSI,
     directory_path = directory_path
   )
-  
+}
