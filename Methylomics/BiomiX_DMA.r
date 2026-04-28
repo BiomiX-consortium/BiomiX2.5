@@ -48,7 +48,7 @@ padju <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METHYLOMICS[2])
 array <- COMMAND_ADVANCED$ADVANCED_OPTION_METHYLOMICS[3]
 n_genes_heat<-as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_CLUSTERING_OPTIONS[3])
 DIR_METADATA <- combined_json[["DIRECTORY_INFO"]][["METADATA_DIR"]]
-Cell_type <- COMMAND$LABEL[i] #Cell_type is the label used to name saved files
+#Cell_type <- COMMAND$LABEL[i] #Cell_type is the label used to name saved files
 args <- combined_json[["COMMAND_LINE_ARGS"]] #Belongs to the original arguments run in the BiomiX_beta.r
 # i = iteration number from the BiomiX_beta.r Script
 # STATISTICS = "YES" # Defined in the BiomiX_beta.r (If run the statistics on the omics data)
@@ -149,8 +149,7 @@ colnames(metadata)[colnames(metadata) == "CONDITION"] <- "condition"
 # Source the BiomiX_preview script to load the runShinyApp() function
 source(paste(directory,'/BiomiX_preview.r', sep=""))
 
-browser_file <- paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep="")
-browser_analysis <- if (file.exists(browser_file)) readLines(browser_file, n = 1) else ""
+browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
 
 # Now call the runShinyApp function with numeric_data and metadata
 options(browser = get_default_browser())
@@ -252,5 +251,4 @@ if (STATISTICS == "YES"){
     BASSI = BASSI,
     directory_path = directory_path
   )
-
-} # end if (STATISTICS == "YES")
+}
