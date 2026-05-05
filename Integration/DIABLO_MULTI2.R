@@ -16,11 +16,11 @@ library(data.table)
 library(vroom)
 library(dplyr)
 library(tidyverse)
-library(DESeq2)
+#library(DESeq2)
 library(caret)
 library(rlist)
 library(mixOmics)
-library(reticulate)
+#library(reticulate)
 library(readxl)
 
 
