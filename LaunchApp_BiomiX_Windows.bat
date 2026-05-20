@@ -5,35 +5,52 @@ setlocal
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
-:: Path to BiomiX Python environment
-set "PYTHON_ENV_DIR=%SCRIPT_DIR%\_INSTALL\BiomiX-env"
-set "PYTHON_EXE=%PYTHON_ENV_DIR%\Scripts\python.exe"
-set "PYTHON_SCRIPTS=%PYTHON_ENV_DIR%\Scripts"
+:: Path to R environment
+set "R_ENV_DIR=%SCRIPT_DIR%\_INSTALL\R_BiomiX"
+set "R_EXE=%R_ENV_DIR%\bin\Rscript.exe"
 
-:: Path to launcher script
-set "LAUNCHER_SCRIPT=%SCRIPT_DIR%\MODULE_WINDOWS.py"
+:: Path to the R app script
+set "APP_SCRIPT=%SCRIPT_DIR%\app.R"
 
-:: Check if python.exe exists
-if not exist "%PYTHON_EXE%" (
-    echo Python executable not found in: %PYTHON_EXE%
+:: Path to renv library
+set "R_LIB=%SCRIPT_DIR%\_INSTALL\renv\library\windows\R-4.4\x86_64-w64-mingw32"
+
+:: Check if Rscript.exe exists
+if not exist "%R_EXE%" (
+    echo R executable not found in: %R_EXE%
     pause
     exit /b 1
 )
 
-:: Confirm Python version and path
-echo 🔍 Verifying Python environment...
-"%PYTHON_EXE%" -c "import sys; print('Using:', sys.executable); print('site-packages:', sys.path)" || (
-    echo Python failed to run
+:: Check if app.R exists
+if not exist "%APP_SCRIPT%" (
+    echo app.R not found in: %APP_SCRIPT%
     pause
     exit /b 1
 )
 
-:: Set PATH to ensure the correct environment is loaded
-set "PATH=%PYTHON_ENV_DIR%;%PYTHON_SCRIPTS%;%PATH%"
-set "PYTHONPATH="
+:: Confirm R version and path
+echo Verifying R environment...
+"%R_EXE%" -e "cat('Using R:', R.version$major, R.version$minor, '\n'); cat('R home:', R.home(), '\n')" || (
+    echo R failed to run
+    pause
+    exit /b 1
+)
 
-:: Launch BiomiX interface
-echo Launching BiomiX...
-"%PYTHON_EXE%" "%LAUNCHER_SCRIPT%"
+:: Set PATH and R_HOME
+set "R_HOME=%R_ENV_DIR%"
+set "PATH=%R_ENV_DIR%\bin;%PATH%"
+
+:: Disable renv auto-activate (we set the lib manually)
+set "RENV_CONFIG_AUTOLOADER_ENABLED=FALSE"
+
+:: Convert backslashes to forward slashes for R
+set "R_LIB_R=%R_LIB:\=/%"
+set "APP_SCRIPT_R=%APP_SCRIPT:\=/%"
+set "SCRIPT_DIR_R=%SCRIPT_DIR:\=/%"
+
+:: Launch the Shiny app opening the browser automatically
+echo Launching R app...
+"%R_EXE%" --vanilla -e ".libPaths('%R_LIB_R%'); shiny::runApp('%SCRIPT_DIR_R%', launch.browser=TRUE)"
 
 pause
