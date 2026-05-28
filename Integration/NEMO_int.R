@@ -35,6 +35,12 @@ library("readxl");
 # directory <-args[3]
 # 
 
+# MANUAL INPUT JESS
+# args = as.list(c("BLymphocytes","SLE"))
+# args[1] <-"mutated"
+# args[2] <-"unmutated"
+# directory="~/Documents/biomix_project/BiomiX2.5"
+
 int_method <- "NEMO"
 
 MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
@@ -58,6 +64,11 @@ DIR_METADATA <- readLines(paste(directory,"directory.txt",sep="/"))
 
 # Ground truth clustering name (if available, otherwise NULL)
 gt.clust_name <- as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[3])
+# MANUAL INPUT JESS
+# DIR_METADATA <- "~/Documents/biomix_project/BiomiX2.5/Metadata/EGAS00001001746_metadata_CLL.tsv"
+# COMMAND$DATA_TYPE <- c("Transcriptomics", "Methylomics", "Undefined", "Undefined", "Undefined", "Undefined", "X")
+# COMMAND$INTEGRATION <- c("YES","YES", "NO", "NO","NO","NO", "NO") #CLL (transcriptomics + methylomics)
+# COMMAND$LABEL <- c("RNA",  "METHY", NA, NA, NA, NA, NA)
 
 
 directory2 <- paste(directory,"/Integration",sep="")
@@ -102,24 +113,13 @@ source("Diablo_utils.R");
 # # Top features to plot in heatmap
 # top_feat = 20 
 # 
-# # Read data----
-# # For now, I use example data in "Integration_data" folder. 
-# # In the future, data normalized by unimodal biomix pipelines will be used
-# 
-# # transcriptomics + methylomics
-# input_path = "../../Integration_data/CLL"; 
-# 
-# # transcriptomics + metabolomics (undefined)
-# #input_path = "../../Integration_data/Tubercolosis" 
 
-# data <- read_data(input_path);
-# 
-# # Create directory to save all results ---
-# timestamp <- format(Sys.time(), "%d-%m-%Y_%H-%M-%S")
-# save_path <- file.path(basename(input_path), paste(int_method, timestamp, sep="_"))
-# dir.create(save_path, showWarnings = FALSE, recursive=TRUE)
-# setwd(save_path); # work inside data folder
-
+# MANUAL INPUT JESS
+# directory="~/Documents/biomix_project/BiomiX2.5"
+# DIR_METADATA <- "~/Documents/biomix_project/BiomiX2.5/Metadata/EGAS00001001746_metadata_CLL.tsv"
+# COMMAND$DATA_TYPE <- c("Transcriptomics", "Methylomics", "Undefined", "Undefined", "Undefined", "Undefined", "X")
+# COMMAND$INTEGRATION <- c("YES","YES", "NO", "NO","NO","NO", "NO") #CLL (transcriptomics + methylomics)
+# COMMAND$LABEL <- c("RNA",  "METHY", NA, NA, NA, NA, NA)
 
 
 ##### REARRANGEMENT INPUT1 DATA ----
@@ -434,12 +434,15 @@ plot_imp_heatmap(data$data, feat_imp, pred.clust=pred.clust, gt.clust=gt.clust,
 # Compute variables enrichment and log-rank test----
 
 # add fake survival data (just to test the function)
-set.seed(123)
-metadata <- metadata_unified # identical in different modalities
-metadata$OS.time <- sample(1:100, nrow(metadata), replace=T)
-metadata$OS.event <- sample(0:1, nrow(metadata), replace=T)
-metadata$DFS.time <- sample(1:100, nrow(metadata), replace=T)
-metadata$DFS.event <- sample(0:1, nrow(metadata), replace=T)
+# set.seed(123)
+# metadata <- metadata_unified # identical in different modalities
+# metadata$OS.time <- sample(1:100, nrow(metadata), replace=T)
+# metadata$OS.event <- sample(0:1, nrow(metadata), replace=T)
+# metadata$DFS.time <- sample(1:100, nrow(metadata), replace=T)
+# metadata$DFS.event <- sample(0:1, nrow(metadata), replace=T)
+# enrich_vars <- c("GENDER", "AGE")
+# surv_vars <- c("OS.time", "OS.event", "DFS.time", "DFS.event")
+
 
 dir.create("enrichment_survival_analysis", showWarnings = FALSE)
 
