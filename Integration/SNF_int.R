@@ -52,9 +52,9 @@ myList <- list()
 COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
 COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
 COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
-Max_features_SNF <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[3])
 
+#Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
+Max_features_SNF <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[3])
 
 K.snf <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[1]) # number of neighbors in KNN
 sigma <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[2]) # variance for affinityMatrix
@@ -141,7 +141,7 @@ if(COMMAND$INTEGRATION[i] == "YES"){
     serum_metabolomics <- vroom(paste(directory2,"/Metabolomics_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
     directory2 <- paste(directory,"/Metabolomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
     serum_annotation <- vroom( paste(directory2,"/",COMMAND$LABEL[i],"_",args[1],"_vs_",args[2],"_results.tsv", sep = ""), delim = "\t")
-    INPUTX<-Metabolomics_processing(serum_annotation,serum_metabolomics,COMMAND$LABEL[i])
+    INPUTX<-Metabolomics_processing(serum_annotation,serum_metabolomics)
     assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
     myList <- list.append(myList,INPUTX[[1]])
     names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])    
@@ -153,7 +153,7 @@ if(COMMAND$INTEGRATION[i] == "YES"){
     directory2 <- paste(directory,"/Integration/INPUT/", COMMAND$LABEL[i],"_",args[1],"_vs_", args[2], sep ="")
     Wholeblood_RNAseq <-  vroom(paste(directory2, "/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], "_normalized_vst_variance.tsv",sep = ""), delim = "\t") #read normalization only
     Wholeblood_metadata <-  vroom(paste(directory2, "/","/Metadata_",COMMAND$LABEL[i], "_", args[1],".tsv",sep = ""), delim = "\t")
-    INPUTX<-Transcriptomics_processing(Wholeblood_metadata,Wholeblood_RNAseq,COMMAND$LABEL[i])
+    INPUTX<-Transcriptomics_processing(Wholeblood_metadata,Wholeblood_RNAseq, Max_features_SNF)
     assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
     myList <- list.append(myList,INPUTX[[1]])
     names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])    
@@ -168,7 +168,7 @@ if(COMMAND$INTEGRATION[i] == "YES"){
     Methylome_metadata <-  vroom(paste(directory2, "/", COMMAND$LABEL[i],"_metadata_MOFA.tsv",sep = "") ,delim = "\t")
     directory2 <- paste(directory,"/Methylomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
     Methylome_annotation <- vroom(paste(directory2, "/", "DMP_", COMMAND$LABEL[i], "_Methylome_", args[1] ,"_vs_", args[2],".tsv",sep = ""), delim = "\t", col_names = TRUE)
-    INPUTX<-Methylomics_processing(Methylome_annotation,Methylome_WB,Methylome_metadata,COMMAND$LABEL[i])
+    INPUTX<-Methylomics_processing(Methylome_annotation,Methylome_WB,Methylome_metadata, Max_features_SNF)
     assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
     myList <- list.append(myList,INPUTX[[1]])
     names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])    
@@ -177,7 +177,7 @@ if(COMMAND$INTEGRATION[i] == "YES"){
   if(COMMAND$DATA_TYPE[i] == "Undefined"){        
     directory2 <- paste(directory,"/Integration/INPUT/", "Undefined_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
     samples_undefined <- vroom(paste(directory2,"/Undefined_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
-    INPUTX<-Undefined_processing(samples_undefined,COMMAND$LABEL[i])
+    INPUTX<-Undefined_processing(samples_undefined)
     assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
     myList <- list.append(myList,INPUTX[[1]])
     names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])
@@ -187,11 +187,6 @@ if(COMMAND$INTEGRATION[i] == "YES"){
 }
 
 # Create directory to save all results ---
-# timestamp <- format(Sys.time(), "%d-%m-%Y_%H-%M-%S")
-# save_path <- file.path(basename(input_path), paste(int_method, timestamp, sep="_"))
-# dir.create(save_path, showWarnings = FALSE, recursive=TRUE)
-# setwd(save_path); # work inside data folder
-
 dir.create(path = paste(directory,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
 directory2 <- paste(directory,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") 
@@ -201,24 +196,26 @@ setwd(directory2)
 names(myList) <- names_X
 
 
+apply_scaling_SNF = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
 # Prepare data for SNF----
 # Feature selection used only to test the code, not necessary in final script
-data <- snf.preprocess(myList, METADATA,
-                       fsel=TRUE, Max_features = Max_features_SNF)
-
-
-#X Jessica: The feature selection and the matrix transformation are already occurring before
-# data <- snf.preprocess(myList, METADATA,
-#                        fsel=TRUE, Max_features = 200)
+data <- snf_nemo.preprocess(myList, METADATA, 
+                            fsel=TRUE, Max_features = Max_features_SNF, 
+                            apply_scaling=apply_scaling_SNF, 
+                            int_method=int_method)
 
 # Set ground truth clustering (if available) ----
 # This should be selected by the user
-if(!is.null(gt.clust_name)){
+if(!is.na(gt.clust_name) && gt.clust_name != "X"){
     # metadata are the same for all omics
     gt.clust <- as.factor(data$metadata[[gt.clust_name]]) # factor (ground truth clustering)
     names(gt.clust) <- data$metadata$ID
 } else {
     gt.clust <- NULL # no ground truth clustering available
+}
+
+if (!gt.clust_name %in% colnames(data$metadata)) {
+    stop("Ground-truth clustering variable not found in metadata: ", gt.clust_name)
 }
 
 

@@ -43,7 +43,8 @@ myList <- list()
 COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
 COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
 COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
+
+#Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
 Max_features_SNF <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[3])
 
 K.nemo <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS[1]) # number of neighbors in KNN
@@ -140,7 +141,7 @@ for (i in 1:length(COMMAND$INTEGRATION)){
       serum_metabolomics <- vroom(paste(directory2,"/Metabolomics_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
       directory2 <- paste(directory,"/Metabolomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
       serum_annotation <- vroom( paste(directory2,"/",COMMAND$LABEL[i],"_",args[1],"_vs_",args[2],"_results.tsv", sep = ""), delim = "\t")
-      INPUTX<-Metabolomics_processing(serum_annotation,serum_metabolomics,COMMAND$LABEL[i])
+      INPUTX<-Metabolomics_processing(serum_annotation,serum_metabolomics)
       assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
       myList <- list.append(myList,INPUTX[[1]])
       names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])    
@@ -152,7 +153,7 @@ for (i in 1:length(COMMAND$INTEGRATION)){
       directory2 <- paste(directory,"/Integration/INPUT/", COMMAND$LABEL[i],"_",args[1],"_vs_", args[2], sep ="")
       Wholeblood_RNAseq <-  vroom(paste(directory2, "/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], "_normalized_vst_variance.tsv",sep = ""), delim = "\t") #read normalization only
       Wholeblood_metadata <-  vroom(paste(directory2, "/","/Metadata_",COMMAND$LABEL[i], "_", args[1],".tsv",sep = ""), delim = "\t")
-      INPUTX<-Transcriptomics_processing(Wholeblood_metadata,Wholeblood_RNAseq,COMMAND$LABEL[i])
+      INPUTX<-Transcriptomics_processing(Wholeblood_metadata,Wholeblood_RNAseq, Max_features_SNF)
       assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
       myList <- list.append(myList,INPUTX[[1]])
       names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])    
@@ -167,7 +168,7 @@ for (i in 1:length(COMMAND$INTEGRATION)){
       Methylome_metadata <-  vroom(paste(directory2, "/", COMMAND$LABEL[i],"_metadata_MOFA.tsv",sep = "") ,delim = "\t")
       directory2 <- paste(directory,"/Methylomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
       Methylome_annotation <- vroom(paste(directory2, "/", "DMP_", COMMAND$LABEL[i], "_Methylome_", args[1] ,"_vs_", args[2],".tsv",sep = ""), delim = "\t", col_names = TRUE)
-      INPUTX<-Methylomics_processing(Methylome_annotation,Methylome_WB,Methylome_metadata,COMMAND$LABEL[i])
+      INPUTX<-Methylomics_processing(Methylome_annotation,Methylome_WB,Methylome_metadata, Max_features_SNF)
       assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
       myList <- list.append(myList,INPUTX[[1]])
       names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])    
@@ -176,7 +177,7 @@ for (i in 1:length(COMMAND$INTEGRATION)){
     if(COMMAND$DATA_TYPE[i] == "Undefined"){        
       directory2 <- paste(directory,"/Integration/INPUT/", "Undefined_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
       samples_undefined <- vroom(paste(directory2,"/Undefined_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
-      INPUTX<-Undefined_processing(samples_undefined,COMMAND$LABEL[i])
+      INPUTX<-Undefined_processing(samples_undefined)
       assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
       myList <- list.append(myList,INPUTX[[1]])
       names_X <- list.append(names_X,COMMAND$DATA_TYPE[i])
@@ -186,11 +187,6 @@ for (i in 1:length(COMMAND$INTEGRATION)){
 }
 
 # Create directory to save all results ---
-# timestamp <- format(Sys.time(), "%d-%m-%Y_%H-%M-%S")
-# save_path <- file.path(basename(input_path), paste(int_method, timestamp, sep="_"))
-# dir.create(save_path, showWarnings = FALSE, recursive=TRUE)
-# setwd(save_path); # work inside data folder
-
 dir.create(path = paste(directory,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
 directory2 <- paste(directory,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") 
@@ -199,10 +195,15 @@ setwd(directory2)
 #Provide names to the list
 names(myList) <- names_X
 
+apply_scaling_SNF = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
+only_common_samples = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
 # Prepare data for NEMO----
 # Feature selection used only to test the code, not necessary in final script
-data <- snf.preprocess(myList, METADATA,
-                       fsel=TRUE, Max_features = Max_features_SNF)
+data <- snf_nemo.preprocess(myList, METADATA, 
+                            fsel=TRUE, Max_features = Max_features_SNF, 
+                            apply_scaling=apply_scaling_SNF, 
+                            int_method = int_method, 
+                            only_common_samples=only_common_samples)
 
 
 # Set ground truth clustering (if available) ----
@@ -211,7 +212,7 @@ data <- snf.preprocess(myList, METADATA,
 # get unified metadata dataframe
 metadata_unified <- data$metadata
 
-if(!is.null(gt.clust_name)){
+if(!is.na(gt.clust_name) && gt.clust_name != "X"){
     gt.clust <- as.factor(metadata_unified[[gt.clust_name]]) # factor (ground truth clustering)
     names(gt.clust) <- metadata_unified$ID
     
@@ -219,22 +220,44 @@ if(!is.null(gt.clust_name)){
     gt.clust <- NULL # no ground truth clustering available
 }
 
+if (!gt.clust_name %in% colnames(data$metadata)) {
+    stop("Ground-truth clustering variable not found in metadata: ", gt.clust_name)
+}
+
+# Check percentage of missing samples
+if(!only_common_samples){
+    
+    missing_omics_summary <- warn_missing_omics_samples(
+        data_list = data$data,
+        metadata = metadata_unified,
+        threshold = 0.20
+    )
+    
+    write.csv(
+        missing_omics_summary,
+        file = "missing_samples_per_omic_NEMO.csv",
+        row.names = FALSE
+    )
+    
+}
 
 # Define K for NEMO---
 # if K.nemo is NA, it is computed as number of samples / NUM.NEIGHBORS.RATIO for
 # each omic
 if (any(is.na(K.nemo))) {
-    K.nemo_vec = as.numeric(lapply(1:length(data$data), function(i) round(ncol(data$data[[i]]) / NUM.NEIGHBORS.RATIO)))
+    K.nemo_vec = as.numeric(lapply(1:length(data$data), function(i) round(nrow(data$data[[i]]) / NUM.NEIGHBORS.RATIO)))
+    warning("K.nemo is NA, it will be set to (number of samples / 6) for each omic.")
 } else if (length(K.nemo) == 1) {
     K.nemo_vec = rep(K.nemo, length(data$data))
 } else{
-    K.nemo_vec = K.nemo
+    #K.nemo_vec = K.nemo
+    stop("K.nemo should be either NA or a single value.")
 }
 
 
 # Compute similarity matrix for each modality----
 sim_mat <- lapply(seq_along(data$data), function(i) {
-    scaled.exp.euclidean(data$data[[i]], K = K.nemo_vec[i], sigma = sigma)
+    scaled.exp.euclidean(data$data[[i]], K = K.nemo_vec[i], sigma = 0.5)
     })
 
 
