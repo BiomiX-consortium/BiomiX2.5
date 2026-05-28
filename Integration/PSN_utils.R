@@ -438,6 +438,7 @@ make_heatmap <- function(mat_list, gt.clust=NULL, pred.clust,
             # plot
             png(file.path(path, paste0("Similarity_heatmap_",omic, ".png")), 
                 width=4, height=4, units = "in", res=300)
+            message(paste("Plotting heatmap for", omic, ". Size:", nrow(mat_sub), "samples."))
             pheatmap::pheatmap(mat_sub, cluster_rows = F, 
                                cluster_cols = F, annotation_col = gt.clust.df_sub, 
                                show_colnames = F, show_rownames = F, 
@@ -460,6 +461,7 @@ make_heatmap <- function(mat_list, gt.clust=NULL, pred.clust,
             # plot
             png(file.path(path, paste0("Similarity_heatmap_",omic, ".png")),
                 width=4, height=4, units = "in", res=300)
+            message(paste("Plotting heatmap for", omic, ". Size:", nrow(mat_sub), "samples."))
             pheatmap::pheatmap(mat_sub, cluster_rows = F, 
                                cluster_cols = F, annotation_col = pred.clust.df_sub, 
                                show_colnames = F, show_rownames = F, fontsize = 6)
