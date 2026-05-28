@@ -1638,6 +1638,7 @@ extract_subset_stats <- function(cb_list, k_vec) {
 #' or NA. If it is a number, this is the number of neighbors used for all omics. If this is a list,
 #' the number of neighbors are taken for each omic from that list. If it is NA, each omic chooses the
 #' number of neighbors to be the number of samples divided by NUM.NEIGHBORS.RATIO.
+#' number of neighbors to be the number of samples divided by NUM.NEIGHBORS.RATIO.
 #' @return A single matrix measuring similarity between the samples across all omics.
 #' 
 #' @author Nimrod Rappoport, Ron Shamir
@@ -1646,11 +1647,13 @@ extract_subset_stats <- function(cb_list, k_vec) {
 nemo.affinity.graph_fix <- function(raw.data, k=NA) {
   if (any(is.na(k))) {
     k = as.numeric(lapply(1:length(raw.data), function(i) round(ncol(raw.data[[i]]) / NUM.NEIGHBORS.RATIO)))
+    message(paste("k was NA, set to", as.character(k), "\n"))
   } else if (length(k) == 1) {
     k = rep(k, length(raw.data))
+    message(paste("k set to", as.character(k)))
   }
-  sim.data = lapply(1:length(raw.data), function(i) {affinityMatrix(dist2(as.matrix(raw.data[[i]]),
-                                                                          as.matrix(raw.data[[i]])), k[i], 0.5)})
+  sim.data = lapply(1:length(raw.data), function(i) {affinityMatrix(dist2(as.matrix(t(raw.data[[i]])),
+                                                                          as.matrix(t(raw.data[[i]]))), k[i], 0.5)})
   affinity.per.omic = lapply(1:length(raw.data), function(i) {
     sim.datum = sim.data[[i]]
     non.sym.knn = apply(sim.datum, 1, function(sim.row) {
@@ -1664,7 +1667,7 @@ nemo.affinity.graph_fix <- function(raw.data, k=NA) {
     sym.knn = non.sym.knn + t(non.sym.knn)
     return(sym.knn)
   })
-  patient.names = Reduce(union, lapply(raw.data, rownames))
+  patient.names = Reduce(union, lapply(raw.data, colnames))
   num.patients = length(patient.names)
   returned.affinity.matrix = matrix(0, ncol = num.patients, nrow=num.patients)
   rownames(returned.affinity.matrix) = patient.names
@@ -1675,7 +1678,7 @@ nemo.affinity.graph_fix <- function(raw.data, k=NA) {
   colnames(shared.omic.count) = patient.names
   
   for (j in 1:length(raw.data)) {
-    curr.omic.patients = rownames(raw.data[[j]])
+    curr.omic.patients = colnames(raw.data[[j]])
     returned.affinity.matrix[curr.omic.patients, curr.omic.patients] = returned.affinity.matrix[curr.omic.patients, curr.omic.patients] + affinity.per.omic[[j]][curr.omic.patients, curr.omic.patients]
     shared.omic.count[curr.omic.patients, curr.omic.patients] = shared.omic.count[curr.omic.patients, curr.omic.patients] + 1
   }

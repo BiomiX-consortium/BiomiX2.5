@@ -73,7 +73,6 @@ gt.clust_name <- as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA
 
 directory2 <- paste(directory,"/Integration",sep="")
 
-library(readxl)
 if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
   METADATA <- read_excel(DIR_METADATA)
   print("Metadata Excel File read successfully!")
@@ -275,8 +274,11 @@ for(i in 1:length(sim_mat)){
 # check_names(sim_mat, data$metadata)
 
 # Integrate using NEMO----
-W_int <- nemo.affinity.graph_fix(data$data, k=K.nemo)
+data_t <- lapply(data$data, t)
+W_int <- nemo.affinity.graph_fix(data_t, k=K.nemo_vec)
 
+# Reorder integrated similarity matrix and input data to match metadata
+W_int <- W_int[match(data$metadata$ID, rownames(W_int)), match(data$metadata$ID, colnames(W_int))]
 
 # Save integrated similarity matrix
 write.csv(W_int, file=file.path("similarity_matrices", 
