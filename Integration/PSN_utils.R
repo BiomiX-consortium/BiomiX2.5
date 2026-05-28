@@ -1370,8 +1370,7 @@ plot.alluvial <- function(clust_df, gt.clust, var_explain, save_path="."){
 #' Check rownames and colnames of similarity matrices and metadata
 #'
 #' @param sim_mat list. List of affinity matrices.
-#' @param metadata list. List of metadata dataframes.
-#' @param int_method string. Method used for data fusion.
+#' @param metadata metadata data.frame. Metadata dataframe containing an ID column.
 #'
 #' @returns A message if the rownames and colnames of the data and metadata are 
 #' identical, otherwise it stops.

@@ -326,33 +326,32 @@ make_graph(c(sim_mat, list(W_int=W_int)), gt.clust=gt.clust,
 
 
 # Compute external quality indices for clustering----
-# External quality indices can be computed only if a ground truth clustering is provided!!!
-# types <- c("ARI", "AMI", "NVI", "NMI")
-# if(!is.null(gt.clust)){
-#     y = as.numeric(gt.clust)
-#     ext.val.idx <- apply(clustering, 2, 
-#                          function(x) {
-#                              res <- as.data.frame(aricode::clustComp(x, y)[types]);
-#                              res$"V-measure" <- sabre::vmeasure(x, y)$v_measure
-#                              rownames(res) <- NULL;
-#                              res})
-#     for(kn in names(ext.val.idx)){
-#         ext.val.idx[[kn]]$nc <- kn
-#     }
-#     ext.val.idx <- do.call(rbind, ext.val.idx)
-#     rownames(ext.val.idx) <- NULL
-# }
-# 
-# 
-# # Visualize and save external quality indices by number of clusters----
-# # External quality indices can be computed only if a ground truth clustering is provided!!!
-# if(!is.null(gt.clust)){
-#     plot_ext.val.idx(ext.val.idx, nc_estim$nc_range)
-# }
+# External quality indices can be computed only if a ground truth clustering 
+# is provided!!!
+types <- c("ARI", "AMI", "NVI", "NMI")
+if(!is.null(gt.clust)){
+    y = as.numeric(gt.clust)
+    ext.val.idx <- apply(clustering, 2,
+                         function(x) {
+                             res <- as.data.frame(aricode::clustComp(x, y)[types]);
+                             #res$"V-measure" <- sabre::vmeasure(x, y)$v_measure
+                             rownames(res) <- NULL;
+                             res})
+    for(kn in names(ext.val.idx)){
+        ext.val.idx[[kn]]$nc <- kn
+    }
+    ext.val.idx <- do.call(rbind, ext.val.idx)
+    rownames(ext.val.idx) <- NULL
+}
 
-print(enrich_vars)
 
 valid_enrich_vars <- enrich_vars[enrich_vars != "X"]
+# Visualize and save external quality indices by number of clusters----
+# External quality indices can be computed only if a ground truth clustering 
+# is provided!!!
+if(!is.null(gt.clust)){
+    plot_ext.val.idx(ext.val.idx, nc_estim$nc_range, types=types)
+}
 
 if (length(valid_enrich_vars) > 0) {
 METADATA_alluvial <- data$metadata[, enrich_vars, drop=F]
