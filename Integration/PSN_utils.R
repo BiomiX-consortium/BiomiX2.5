@@ -39,42 +39,107 @@ read_data <- function(input_path){
 }
 
 
-#' Prepare data and metadata for SNF integration
+#' Prepare data and metadata for SNF and NEMO integration
 #' 
 #' @description
 #' This function performs the following pre-processing steps:
+#' - Retain the subset of samples having all omics in data and metadata for SNF; 
+#' while retains only samples having associated metadata for NEMO.
 #' - Remove features having missing values
+#' - remove zero-variance features
 #' - Feature selection by variance (optional)
-#' - Z-score standardization
-#' - Retain the subset of samples having all omics in data and metadata
+#' - Z-score standardization (optional)
 #' 
 #'
-#' @param data List. List of dataframes (features x samples), one for each modality.
-#' @param metadata List. List of dataframes (samples x features), one for each modality.
-#' @param col.remove vector. Vector containing the names of columns in data and/or 
-#' metadata to remove. 
+#' @param data List. List of dataframes (samples x features), one for each modality.
+#' @param metadata dataframe. Dataframe (samples x features).
 #' @param fsel logical. Perform feature selection by variance.
 #' @param Max_features numeric. Number of features to be retained in the 
-#' filter by variance (used only if fsel=TRUE).
+#' filter by variance (used only if fsel=TRUE). If the number of usable features is less 
+#' than Max_features, all features are retained.
+#' @param apply_scaling logical. Perform z-score standardization of the data 
+#' (default: TRUE).
+#' @param int_method character. Integration method to be applied. It can be "SNF" 
+#' or "NEMO".
+#' @param only_common_samples logical. If TRUE, only samples having all omics 
+#' in data and metadata are retained. This is used only for NEMO, since SNF 
+#' does not natively handle missing data and thus requires all samples to have 
+#' all omics. Default=TRUE.
 #'
 #' @return A list with two elements:
-#' - Data: a list with a dataframe for each modality (samples x features).
-#' - Metadata: a list with a dataframe for each modality (samples x features).
+#' - data: a list with a dataframe for each modality (samples x features).
+#' - metadata: dataframe (samples x features).
 #' 
 #' @author Jessica Gliozzo
 #' 
 #' @export
-snf.preprocess <- function(data, metadata,
-                           fsel=FALSE, Max_features = 200){
+snf_nemo.preprocess <- function(data, metadata,
+                           fsel=FALSE, 
+                           Max_features = 200, 
+                           apply_scaling=TRUE, 
+                           int_method,
+                           only_common_samples=TRUE){
+  
+    if (anyDuplicated(metadata$ID)) {
+      stop("metadata$ID contains duplicated sample IDs.")
+    }
+    
+    for (omic in names(data)) {
+      if (anyDuplicated(rownames(data[[omic]]))) {
+        stop(paste0(omic, ": duplicated sample IDs in rownames."))
+      }
+    }
+    
+    # get common samples among all omics
+    # common_samples <- Reduce(intersect, lapply(data, rownames))
+    # metadata <- metadata[which(metadata$ID %in% common_samples),]
+    # metadata <- metadata[order(metadata$ID),]
+    if (int_method == "SNF") {
+      common_samples <- Reduce(
+        intersect,
+        c(lapply(data, rownames), list(metadata$ID))
+      )
+      
+    } else if (int_method == "NEMO") {
+      
+      # Keep samples that are present in at least one omic and metadata
+      if(only_common_samples){
+        omic_samples <- Reduce(intersect, lapply(data, rownames))
+      } else {
+        omic_samples <- Reduce(union, lapply(data, rownames))
+      }
+      
+      common_samples <- intersect(omic_samples, metadata$ID)
+      
+    } else {
+      stop("Unknown integration method: ", int_method)
+    }
+    
+    # Collect common set of samples in all omics since SNF does not natively
+    # handle missing data
+    # for(omic in names(data)){
+    #   data[[omic]] <- data[[omic]][common_samples, ]
+    #   data[[omic]]<- data[[omic]][order(rownames(data[[omic]])),]
+    # }
+    
+    common_samples <- sort(common_samples)
+    
+    data <- lapply(data, function(x) {
+      # reorder samples to match common_samples
+      keep <- common_samples[common_samples %in% rownames(x)]
+      x[keep, , drop = FALSE]
+    })
+    
+    metadata <- metadata[match(common_samples, metadata$ID), , drop = FALSE]
     
     for(omic in names(data)){
         
         if(omic == "Methylomics"){
-            feature_names <- rownames(data[[omic]])
+            sample_names <- rownames(data[[omic]])
         } else if (omic == "Transcriptomics"){
-            feature_names <- rownames(data[[omic]])
+            sample_names <- rownames(data[[omic]])
         } else if (omic == "Metabolomics" | omic == "Undefined"){
-          feature_names <- rownames(data[[omic]])
+            sample_names <- rownames(data[[omic]])
         }
         
         else {
@@ -82,33 +147,46 @@ snf.preprocess <- function(data, metadata,
         }
         
         # Retain features having no missing values
-        keep <- complete.cases(data[[omic]])
-        data[[omic]] <- data[[omic]][keep, ]
+        feature_names <- colnames(data[[omic]])
+        keep <- complete.cases(t(data[[omic]]))
+        data[[omic]] <- data[[omic]][, keep]
         feature_names <- feature_names[keep]
         
         # Convert to numeric
         data[[omic]] <- apply(data[[omic]], 2, as.numeric)
         
-        # Set features names
-        rownames(data[[omic]]) <- feature_names
+        # Set features and sample names
+        rownames(data[[omic]]) <- sample_names
+        colnames(data[[omic]]) <- feature_names
         
-        # Feature selection by variance and transpose data (sample x features)
+        # remove zero-variance features
+        variances <- apply(data[[omic]], 2, var)
+        keep_var <- is.finite(variances) & variances > 0
+        data[[omic]] <- data[[omic]][, keep_var, drop = FALSE]
+        
+        if (ncol(data[[omic]]) == 0) {
+          stop(paste0(omic, ": no usable features remain after filtering."))
+        }
+        
+        # Feature selection by variance
         if(fsel){
             var_filter <- function(mat, Max_features){
                 # Stop if the number of features is less than the number of features to retain
-                if(ncol(mat) < Max_features){
-                    stop(paste0(omic, ": The number of features is less than the number of features to retain! Did you select more SNF integration variables than the general integration input features?"))
+                n_keep <- min(Max_features, ncol(mat))
+                if (ncol(mat) < Max_features) {
+                  warning(paste0(omic, ": only ", ncol(mat), " usable features available; keeping all."))
                 }
                 
                 variances <- apply(mat, 2, var)
-                sorted <- sort(variances, decreasing=TRUE, index.return=TRUE)$ix[1:Max_features]
+                sorted <- sort(variances, decreasing=TRUE, index.return=TRUE)$ix[1:n_keep]
                 
                 return(mat[,sorted])
             }
             
+            # apply variance-filtering
             data[[omic]] <- var_filter(data[[omic]], Max_features)
         } else {
-            print("No SNF Filtering")
+            message(omic, ": no variance-based feature filtering applied.")
         }
         
         # Add warning if the number of features is greater than 5000
@@ -116,23 +194,50 @@ snf.preprocess <- function(data, metadata,
             warning(paste0(omic, ": The number of features is greater than 5000! Consider feature selection."))
         }
         
-      
-        #Standardize data (already done in the single omics pipeline) *Cristian
-        # data[[omic]] <- SNFtool::standardNormalization(data[[omic]])
+        #Standardize data
+        if(apply_scaling){
+          message(paste("Standardizing", omic, "data..."))
+          data[[omic]] <- SNFtool::standardNormalization(data[[omic]])
+        } else{
+          warning(omic, ": Standardization recommended for SNF/NEMO unless the data were already standardized upstream.")
+        }
         
     }
     
-    # get common samples among all omics
-    common_samples <- Reduce(intersect, lapply(data, rownames))
-    metadata <- metadata[which(metadata$ID %in% common_samples),]
-    metadata <- metadata[order(metadata$ID),]
-
-    # Collect common set of samples in all omics since SNF does not natively
-    # handle missing data
-    for(omic in names(data)){
-        data[[omic]] <- data[[omic]][common_samples, ]
-        data[[omic]]<- data[[omic]][order(rownames(data[[omic]])),]
+    # final check on samples order
+    if(int_method == "SNF" || (int_method == "NEMO" && only_common_samples)){
+      
+      sample_order_ok <- all(vapply(
+        data,
+        function(x) identical(rownames(x), metadata$ID),
+        logical(1)
+      ))
+      
+      if (!sample_order_ok) {
+        stop("Sample order mismatch between omics data and metadata.")
+      } else {
+        message("Sample order check passed: omics data and metadata are aligned.")
+      }
+      
+    } else if (int_method=="NEMO"){
+      # NEMO can handle missing data, but we still need to check that the 
+      # samples are present in the metadata
+      
+      for(omic in names(data)){
+          if(!all(rownames(data[[omic]]) %in% metadata$ID)){
+            stop(paste0("Data and metadata for ", omic, " do not have the same samples in the same order!"))
+          } else {
+            message(paste0("Sample check passed for ", omic, ": all samples in data are present in metadata."))
+          }
+      }
+    } else {
+      stop("Unknown integration method specified!")
     }
+    
+    message("\nPre-processing complete.") 
+    message(paste("Final metadata sample size:", nrow(metadata)))
+    message(paste("Final sample size per omic:", paste(sapply(data, nrow), collapse = ", ")))
+    message(paste("Final feature counts per omic:", paste(sapply(data, ncol), collapse = ", ")))
     
     return(list(data=data, metadata=metadata))
 }
