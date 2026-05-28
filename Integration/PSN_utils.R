@@ -1665,3 +1665,82 @@ nemo.affinity.graph_fix <- function(raw.data, k=NA) {
   
   return(final.ret)
 }
+
+
+#' @title Warn about missing samples per omic for NEMO
+#' 
+#' Warn if one or more omics are missing more than 20% of the samples
+#' This check is specific for NEMO, where samples may be partially missing
+#' across omics.
+#'
+#' @param data_list A list of dataframes, where each dataframe corresponds to an omic 
+#' and has samples as rows and features as columns. Sample IDs must be stored as rownames.
+#' @param metadata A dataframe containing sample metadata, with a column named 'ID' that 
+#' contains the sample IDs.
+#' @param threshold A numeric value between 0 and 1 indicating the fraction of 
+#' missing samples per omic
+#'
+#' @returns A list of omics that are missing more than the specified threshold of samples, 
+#' along with the fraction of missing samples for each.
+#' @export
+#'
+#' @examples
+warn_missing_omics_samples <- function(data_list, metadata, threshold = 0.20) {
+    
+    if (!"ID" %in% colnames(metadata)) {
+        stop("metadata must contain an 'ID' column to check missing samples per omic.")
+    }
+    
+    all_samples <- metadata$ID
+    
+    if (anyDuplicated(all_samples)) {
+        stop("metadata$ID contains duplicated sample IDs.")
+    }
+    
+    missing_summary <- lapply(names(data_list), function(omic) {
+        
+        omic_samples <- rownames(data_list[[omic]])
+        
+        if (is.null(omic_samples)) {
+            stop("Omic '", omic, "' has no rownames. Sample IDs must be stored as rownames.")
+        }
+        
+        missing_samples <- setdiff(all_samples, omic_samples)
+        missing_fraction <- length(missing_samples) / length(all_samples)
+        
+        data.frame(
+            omic = omic,
+            n_total_samples = length(all_samples),
+            n_present_samples = length(intersect(all_samples, omic_samples)),
+            n_missing_samples = length(missing_samples),
+            missing_fraction = missing_fraction,
+            missing_percent = round(100 * missing_fraction, 2),
+            stringsAsFactors = FALSE
+        )
+    })
+    
+    missing_summary <- do.call(rbind, missing_summary)
+    
+    problematic_omics <- missing_summary[missing_summary$missing_fraction > threshold, , drop = FALSE]
+    
+    if (nrow(problematic_omics) > 0) {
+        warning(
+            "One or more omics are missing more than ",
+            threshold * 100,
+            "% of the samples: ",
+            paste0(
+                problematic_omics$omic,
+                " (",
+                problematic_omics$n_missing_samples,
+                "/",
+                problematic_omics$n_total_samples,
+                " missing; ",
+                problematic_omics$missing_percent,
+                "%)"
+            ),
+            collapse = "; "
+        )
+    }
+    
+    return(missing_summary)
+}
