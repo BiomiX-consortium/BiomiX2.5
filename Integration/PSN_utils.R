@@ -491,7 +491,7 @@ W_normalize <- function(W){
     
     diag(W) <- 0
     W <- W / rowSums(W)
-    W <- W + t(W)
+    W <- (W + t(W)) / 2
     
     return(W)
 }
@@ -532,7 +532,7 @@ knn_sparsification <- function(sim.mat, k){
     mat.knn <- apply(sim.mat, 1, compute.row.knn, k=k) # apply to each row and saved in columns
     
     # Make symmetric
-    mat.knn <- mat.knn + t(mat.knn)
+    mat.knn <- (mat.knn + t(mat.knn)) / 2
     #mat.knn <-  pmax(mat.knn, t(mat.knn))
     
     return(mat.knn)
