@@ -1357,31 +1357,31 @@ plot.alluvial <- function(clust_df, gt.clust, var_explain, save_path="."){
 #' @author Jessica Gliozzo
 #' 
 #' @export
-check_names <- function(sim_mat, metadata, int_method){
+check_names <- function(sim_mat, metadata){
     
     for(omic in names(sim_mat)){
         if(identical(rownames(sim_mat[[omic]]), metadata$ID) & 
            identical(colnames(sim_mat[[omic]]), metadata$ID)){
-            message("The rownames and colnames of ", omic, " are identical in data and metadata")
+            message("The rownames and colnames of ", omic, " are identical in data and metadata.")
         } else {
-            stop("The rownames and colnames of ", omic, " are not identical in data and metadata")
+            stop("The rownames and colnames of ", omic, " are not identical in data and metadata.")
         }
         
     }
     
     # Check if the rownames of different omics are identical
-    for(i in 1:(length(sim_mat)-1)){
-        if(identical(rownames(sim_mat[[i]]), rownames(sim_mat[[i+1]]))){
-            message("\nThe rownames of ", names(sim_mat)[i], " and ", names(sim_mat)[i+1], " are identical")
-        } else {
-            message("\nThe rownames of ", names(sim_mat)[i], " and ", names(sim_mat)[i+1], " are not identical")
-            if(int_method=="SNF"){
-              stop("SNF requires the same samples order for all omics. Please check your data.")
-            } else if(int_method=="NEMO"){
-              message("NEMO does not require the same samples order. Do not worry!")
-            }
-        }
-    }
+    # for(i in 1:(length(sim_mat)-1)){
+    #     if(identical(rownames(sim_mat[[i]]), rownames(sim_mat[[i+1]]))){
+    #         message("\nThe rownames of ", names(sim_mat)[i], " and ", names(sim_mat)[i+1], " are identical")
+    #     } else {
+    #         message("\nThe rownames of ", names(sim_mat)[i], " and ", names(sim_mat)[i+1], " are not identical")
+    #         if(int_method=="SNF"){
+    #           stop("SNF requires the same samples order for all omics. Please check your data.")
+    #         } else if(int_method=="NEMO"){
+    #           message("NEMO does not require the same samples order. Do not worry!")
+    #         }
+    #     }
+    # }
 }
 
 
