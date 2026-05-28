@@ -974,6 +974,13 @@ rankFeaturesByNMI_mod <- function(data, clustering, K, sigma=0.5){
 
 #' Rank features by NMI
 #'
+#' @description 
+#' Calculates the normalized mutual information (NMI) score between each features
+#' clustering and the clustering of the fused matrix W. Each feature is ranked
+#' based on how similar it is to the clustering of the fused matrix.
+#' If the omics have different number of samples, the NMI score is not computed 
+#' (return NULL).
+#'
 #' @param mat_data list. List of dataframes (samples x features), one for each modality.
 #' @param clustering vector. Clustering of the fused matrix W.
 #' @param K vector. Vector with the number of neighbours for each omic.
@@ -986,6 +993,17 @@ rankFeaturesByNMI_mod <- function(data, clustering, K, sigma=0.5){
 #' @export
 compute_feature_importance <- function(mat_data, clustering, K, sigma=0.5){
     
+    sample_n <- vapply(lapply(mat_data, rownames), length, integer(1))
+    
+    if (length(unique(sample_n)) > 1) {
+      warning(
+        "Feature importance skipped: omics have different numbers of samples: ",
+        paste(paste0(names(sample_n), "=", sample_n), collapse = ", "),
+        ". This can happen with NEMO when missing omics are allowed."
+      )
+      return(NULL)
+    }
+  
     feature_ranks <- rankFeaturesByNMI_mod(mat_data, clustering, K=K, sigma=sigma)
     
     res <- list()
