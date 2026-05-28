@@ -272,7 +272,7 @@ for(i in 1:length(sim_mat)){
 }
 
 # Check order of samples in metadata and similarity matrices
-check_names(sim_mat, data$metadata, int_method = int_method)
+# check_names(sim_mat, data$metadata)
 
 # Integrate using NEMO----
 W_int <- nemo.affinity.graph_fix(data$data, k=K.nemo)

@@ -238,10 +238,7 @@ for(i in 1:length(sim_mat)){
 }
 
 # Check order of samples in metadata and similarity matrices
-check_names(sim_mat, data$metadata, int_method = int_method)
-
-print("Dimension check: The matrix must be of the same size")
-lapply(sim_mat, dim)  # Check dimensions
+check_names(sim_mat, data$metadata)
 
 # Integrate using SNF ----
 W_int <- SNFtool::SNF(sim_mat, K=K.snf, t=t)
