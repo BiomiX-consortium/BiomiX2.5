@@ -163,97 +163,94 @@ snf.preprocess <- function(data, metadata,
 #' @author Jessica Gliozzo
 #' 
 #' @export
-nemo.preprocess <- function(data, metadata,
-                           fsel=FALSE, Max_features = 200){
-  
-  for(omic in names(data)){
-    
-    if(omic == "methylomics"){
-      feature_names <- data[[omic]]$ID
-    } else if (omic == "transcriptomics"){
-      feature_names <- data[[omic]]$Gene.name
-    } else if (omic == "metabolomics" | omic == "undefined"){
-      rownames(data[[omic]]) <- data[[omic]]$ID
-    }
-    
-    else {
-      stop("Unknown omic type!")
-    }
-    
-    # Remove unwanted columns
-    data[[omic]] <- as.matrix(data[[omic]][, !names(data[[omic]]) %in% col.remove])
-    
-    # Transpose data to keep the same preprocessing steps
-    if(omic == "metabolomics" | omic == "undefined"){
-      data[[omic]] <- t(data[[omic]])
-      feature_names <- rownames(data[[omic]])
-    }
-    
-    # Retain features having no missing values
-    keep <- complete.cases(data[[omic]])
-    data[[omic]] <- data[[omic]][keep, ]
-    feature_names <- feature_names[keep]
-    
-    # Convert to numeric
-    data[[omic]] <- apply(data[[omic]], 2, as.numeric)
-    
-    # Set features names
-    rownames(data[[omic]]) <- feature_names
-    
-    # Feature selection by variance
-    if(fsel){
-      var_filter <- function(mat, Max_features){
-        # Stop if the number of features is less than the number of features to retain
-        if(nrow(mat) < Max_features){
-          stop(paste0(omic, ": The number of features is less than the number of features to retain!"))
-        }
-        
-        variances <- apply(mat, 1, var)
-        sorted <- sort(variances, decreasing=TRUE, index.return=TRUE)$ix[1:Max_features]
-        
-        return(mat[sorted, ])
-      }
-      
-      data[[omic]] <- var_filter(data[[omic]], Max_features)
-    }
-    
-    # Add warning if the number of features is greater than 5000
-    if(nrow(data[[omic]]) > 5000){
-      warning(paste0(omic, ": The number of features is greater than 5000! Consider feature selection."))
-    }
-    
-    
-    #Standardize data
-    data[[omic]] <- t(SNFtool::standardNormalization(t(data[[omic]])))
-    
-    # Convert to data.frame
-    data[[omic]] <- as.data.frame(data[[omic]])
-  }
-  
-  # Fix metadata
-  for(omic in names(data)){
-    
-    if(!is.null(metadata[[omic]])){
-      # subset metadata
-      rownames(metadata[[omic]]) <- metadata[[omic]]$ID
-      
-      # Fix column data type in metadata
-      metadata[[omic]] <- metadata[[omic]] %>% 
-        dplyr::mutate(across(!ID & where(is.character), as.factor))
-    }
-  }
-  
-  # Check that data and metadata have the same samples in the same order
-  for(omic in names(data)){
-    if(!is.null(metadata[[omic]])){
-      if(!all(colnames(data[[omic]]) == rownames(metadata[[omic]]))){
-        stop(paste0("Data and metadata for ", omic, " do not have the same samples in the same order!"))
-      }
-    } 
-  }
-  
-  return(list(data=data, metadata=metadata))
-}
+# nemo.preprocess <- function(data, metadata,
+#                            fsel=FALSE, Max_features = 200){
+#   
+#   for(omic in names(data)){
+#     
+#     if(omic == "methylomics"){
+#       feature_names <- data[[omic]]$ID
+#     } else if (omic == "transcriptomics"){
+#       feature_names <- data[[omic]]$Gene.name
+#     } else if (omic == "metabolomics" | omic == "undefined"){
+#       rownames(data[[omic]]) <- data[[omic]]$ID
+#     }
+#     
+#     else {
+#       stop("Unknown omic type!")
+#     }
+#     
+#     # Transpose data to keep the same preprocessing steps
+#     if(omic == "metabolomics" | omic == "undefined"){
+#       data[[omic]] <- t(data[[omic]])
+#       feature_names <- rownames(data[[omic]])
+#     }
+#     
+#     # Retain features having no missing values
+#     keep <- complete.cases(data[[omic]])
+#     data[[omic]] <- data[[omic]][keep, ]
+#     feature_names <- feature_names[keep]
+#     
+#     # Convert to numeric
+#     data[[omic]] <- apply(data[[omic]], 2, as.numeric)
+#     
+#     # Set features names
+#     rownames(data[[omic]]) <- feature_names
+#     
+#     # Feature selection by variance
+#     if(fsel){
+#       var_filter <- function(mat, Max_features){
+#         # Stop if the number of features is less than the number of features to retain
+#         if(nrow(mat) < Max_features){
+#           stop(paste0(omic, ": The number of features is less than the number of features to retain!"))
+#         }
+#         
+#         variances <- apply(mat, 1, var)
+#         sorted <- sort(variances, decreasing=TRUE, index.return=TRUE)$ix[1:Max_features]
+#         
+#         return(mat[sorted, ])
+#       }
+#       
+#       data[[omic]] <- var_filter(data[[omic]], Max_features)
+#     }
+#     
+#     # Add warning if the number of features is greater than 5000
+#     if(nrow(data[[omic]]) > 5000){
+#       warning(paste0(omic, ": The number of features is greater than 5000! Consider feature selection."))
+#     }
+#     
+#     
+#     #Standardize data
+#     data[[omic]] <- t(SNFtool::standardNormalization(t(data[[omic]])))
+#     
+#     # Convert to data.frame
+#     data[[omic]] <- as.data.frame(data[[omic]])
+#   }
+#   
+#   # Fix metadata
+#   for(omic in names(data)){
+#     
+#     if(!is.null(metadata[[omic]])){
+#       # subset metadata
+#       rownames(metadata[[omic]]) <- metadata[[omic]]$ID
+#       
+#       # Fix column data type in metadata
+#       metadata[[omic]] <- metadata[[omic]] %>% 
+#         dplyr::mutate(across(!ID & where(is.character), as.factor))
+#     }
+#   }
+#   
+#   # Check that data and metadata have the same samples in the same order
+#   for(omic in names(data)){
+#     if(!is.null(metadata[[omic]])){
+#       if(!all(colnames(data[[omic]]) == rownames(metadata[[omic]]))){
+#         stop(paste0("Data and metadata for ", omic, " do not have the same samples in the same order!"))
+#       }
+#     } 
+#   }
+#   
+#   return(list(data=data, metadata=metadata))
+# }
 
 
 #' Compute the scaled exponential euclidean kernel
