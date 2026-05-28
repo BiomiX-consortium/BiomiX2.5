@@ -835,6 +835,10 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
 #' 
 #' @export
 estimate.nc <- function(W, nc=NULL, gt.clust=NULL, int_method){
+  
+    if (anyNA(gt.clust)) {
+      stop("gt.clust contains NA values.")
+    }
     
     # Check if int_method is valid
     if(!(int_method %in% c("SNF", "NEMO"))){
@@ -847,9 +851,9 @@ estimate.nc <- function(W, nc=NULL, gt.clust=NULL, int_method){
             max_nc <- min(floor(nrow(W) / 5), 10)
             nc <- 2:max_nc
             if(int_method == "SNF"){
-              nc_estim <- SNFtool::estimateNumberOfClustersGivenGraph(W_int, NUMC=nc)$`Eigen-gap best`
+              nc_estim <- SNFtool::estimateNumberOfClustersGivenGraph(W, NUMC=nc)$`Eigen-gap best`
             } else if(int_method == "NEMO"){
-              nc_estim <- NEMO::nemo.num.clusters(W_int, NUMC=nc)
+              nc_estim <- NEMO::nemo.num.clusters(W, NUMC=nc)
             }
             
             warning("The number of clusters is automatically estimated in range 2:", max_nc, ". Consider to set the number of clusters based on your sample size!")
@@ -860,9 +864,9 @@ estimate.nc <- function(W, nc=NULL, gt.clust=NULL, int_method){
             
         } else if(length(nc) > 1){
             if(int_method == "SNF"){
-              nc_estim <- SNFtool::estimateNumberOfClustersGivenGraph(W_int, NUMC=nc)$`Eigen-gap best`
+              nc_estim <- SNFtool::estimateNumberOfClustersGivenGraph(W, NUMC=nc)$`Eigen-gap best`
             } else if(int_method == "NEMO"){
-              nc_estim <- NEMO::nemo.num.clusters(W_int, NUMC=nc)
+              nc_estim <- NEMO::nemo.num.clusters(W, NUMC=nc)
             }
             warning("The number of clusters is automatically estimated in range: ", min(nc),":", max(nc))
         }
@@ -883,9 +887,9 @@ estimate.nc <- function(W, nc=NULL, gt.clust=NULL, int_method){
         } else if(length(nc) > 1){
             if(length(unique(gt.clust)) %in% nc){
                 if(int_method == "SNF"){
-                  nc_estim <- SNFtool::estimateNumberOfClustersGivenGraph(W_int, NUMC=nc)$`Eigen-gap best`
+                  nc_estim <- SNFtool::estimateNumberOfClustersGivenGraph(W, NUMC=nc)$`Eigen-gap best`
                 } else if(int_method == "NEMO"){
-                  nc_estim <- NEMO::nemo.num.clusters(W_int, NUMC=nc)
+                  nc_estim <- NEMO::nemo.num.clusters(W, NUMC=nc)
                 }
                 warning("The number of clusters is automatically estimated in range: ", min(nc), ":", max(nc))
             } else {
