@@ -62,12 +62,14 @@ if (nc[length(nc)] < 2) {
 
 top_feat <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[2]) #Number variable in the heatmap to visualize
 # Variable of interest for enrichment and survival analysis
-enrich_vars <- strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[1]), "/")[[1]]
-surv_vars <- strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[2]), "/")[[1]]
+enrich_vars <- trimws(strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[1]), "/")[[1]])
+surv_vars <- trimws(strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[2]), "/")[[1]])
 DIR_METADATA <- readLines(paste(directory,"directory.txt",sep="/"))
 
 # Ground truth clustering name (if available, otherwise NULL)
-gt.clust_name <- as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[3])
+gt.clust_name <- trimws(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[3]))
+
+
 # MANUAL INPUT JESS
 # DIR_METADATA <- "~/Documents/biomix_project/BiomiX2.5/Metadata/EGAS00001001746_metadata_CLL.tsv"
 # COMMAND$DATA_TYPE <- c("Transcriptomics", "Methylomics", "Undefined", "Undefined", "Undefined", "Undefined", "X")
