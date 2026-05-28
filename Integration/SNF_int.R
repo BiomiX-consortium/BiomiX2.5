@@ -66,6 +66,11 @@ K.snf <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[1]) # number of
 sigma <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[2]) # variance for affinityMatrix
 t <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[3]) # number of iterations for SNF
 nc <- c(2:as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[1])) # Max number of cluster to test
+
+if (nc[length(nc)] < 2) {
+    stop("Maximum number of clusters must be at least 2.")
+}
+
 top_feat <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[2]) #Number variable in the heatmap to visualize
 # Variable of interest for enrichment and survival analysis
 enrich_vars <- strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[1]), "/")[[1]]

@@ -54,8 +54,12 @@ COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), deli
 Max_features_SNF <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[3])
 
 K.nemo <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS[1]) # number of neighbors in KNN
-sigma <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[2]) # variance for affinityMatrix
+#sigma <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[2]) # variance for affinityMatrix
 nc <- c(2:as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[1])) # Max number of cluster to test
+if (nc[length(nc)] < 2) {
+    stop("Maximum number of clusters must be at least 2.")
+}
+
 top_feat <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[2]) #Number variable in the heatmap to visualize
 # Variable of interest for enrichment and survival analysis
 enrich_vars <- strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[1]), "/")[[1]]
@@ -360,18 +364,10 @@ make_heatmap(c(sim_mat, list(W_int=W_int)), gt.clust=gt.clust,
              pred.clust=pred.clust, norm="row", path="heatmaps")
 
 # Plot graph
-
 if(is.na(K.nemo)){
     K_W_int <- round(ncol(W_int) / NUM.NEIGHBORS.RATIO)
-} else if (length(K.nemo) == 1) {
+} else if(length(K.nemo) == 1){
     K_W_int <- K.nemo
-} else {
-    # keep consistent edge density required by the user
-    n_vec <- sapply(sim_mat, ncol)
-    N <- ncol(W_int)
-    
-    p_bar <- median(K.nemo_vec/ n_vec)  # or mean()
-    K_W_int <- ceiling(p_bar * N) 
 }
 
 # K for each modality and integrated matrix
@@ -422,7 +418,6 @@ plot.alluvial(clustering[,as.character(nc_estim$nc_estim), drop=F], gt.clust,
 }
 
 # Which are the most important features for integration?----
-feat_imp <- compute_feature_importance(data$data, pred.clust, K=K.nemo_vec, sigma=sigma)
 
 
 dir.create("feature_importance", showWarnings = FALSE)
@@ -431,6 +426,7 @@ write.csv(feat_imp, file="feature_importance/feature_importance.csv", row.names=
 # Heatmap of top_feat important features----
 plot_imp_heatmap(data$data, feat_imp, pred.clust=pred.clust, gt.clust=gt.clust, 
                  top_feat=top_feat, save_path="./feature_importance")
+feat_imp <- compute_feature_importance(data$data, pred.clust, K=K.nemo_vec, sigma=0.5)
 
 
 # Compute variables enrichment and log-rank test----
