@@ -1540,12 +1540,12 @@ plot_imp_heatmap <- function(data, feat_imp, pred.clust, gt.clust=NULL, top_feat
         ComplexHeatmap::Heatmap(all_data[[i]], cluster_rows=F, cluster_columns = F,
                                 show_column_names = F, name="Values", top_annotation = top_anno[[i]],
                                 row_names_side = "left", row_names_gp = gpar(fontsize = 8),
-                                right_annotation = right_anno)
+                                right_annotation = right_anno, height = unit(5, "in"))
     })
 
     # plot_heatmaps
     for(i in 1:length(heatmap_list)) {
-        png(file.path(save_path, paste0(names(data)[i], "_top_features_heatmap.png")), width = 1600, height = 2000, res = 150)
+        png(file.path(save_path, paste0(names(data)[i], "_top_features_heatmap.png")), width = 1400, height = 1000, res = 150)
         draw(heatmap_list[[i]],  merge_legend = T, annotation_legend_side = "right")
         dev.off()
     }
