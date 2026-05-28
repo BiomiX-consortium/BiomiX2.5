@@ -350,7 +350,6 @@ if(!is.null(gt.clust)){
 }
 
 
-valid_enrich_vars <- enrich_vars[enrich_vars != "X"]
 # Visualize and save external quality indices by number of clusters----
 # External quality indices can be computed only if a ground truth clustering 
 # is provided!!!
@@ -358,15 +357,23 @@ if(!is.null(gt.clust)){
     plot_ext.val.idx(ext.val.idx, nc_estim$nc_range, types=types)
 }
 
-if (length(valid_enrich_vars) > 0) {
-METADATA_alluvial <- data$metadata[, enrich_vars, drop=F]
-rownames(METADATA_alluvial) <- data$metadata$ID
 
 # Make Alluvial plot to compare with ground truth clustering and variables----
 # For now, I compare the optimal cluster to gt.clust (if present) and variables of interest (if present).
-plot.alluvial(clustering[,as.character(nc_estim$nc_estim), drop=F], gt.clust, 
-              METADATA_alluvial, 
-              save_path="./clustering_metrics")
+
+#print(enrich_vars)
+valid_enrich_vars <- enrich_vars[enrich_vars != "X"]
+if(!all(valid_enrich_vars %in% colnames(data$metadata))){
+  stop("Some enrichment variables are not present in the metadata.")
+}
+
+if (length(valid_enrich_vars) > 0) {
+  METADATA_alluvial <- as.data.frame(data$metadata[, valid_enrich_vars, drop=F])
+  rownames(METADATA_alluvial) <- data$metadata$ID
+  
+  plot.alluvial(clustering[,as.character(nc_estim$nc_estim), drop=F], gt.clust, 
+                METADATA_alluvial, 
+                save_path="./clustering_metrics")
 
 }
 

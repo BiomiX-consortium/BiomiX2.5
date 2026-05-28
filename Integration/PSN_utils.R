@@ -1300,10 +1300,10 @@ plot.alluvial <- function(clust_df, gt.clust, var_explain, save_path="."){
     # Check that clust_df, gt.clust and var_explain have the same order
     sample_names <- list(names(gt.clust), rownames(var_explain))
     sample_names <- sample_names[ !sapply(sample_names, is.null) ]
-    #same_order <-  all(vapply(sample_names, function(x) identical(x, rownames(clust_df)), logical(1)))
-    #if(!same_order){
-    #  stop("The rownames of clust_df, gt.clust and var_explain must be the same!")
-    #}
+    same_order <-  all(vapply(sample_names, function(x) identical(x, rownames(clust_df)), logical(1)))
+    if(!same_order){
+     stop("The rownames of clust_df, gt.clust and var_explain must be the same!")
+    }
   
     names(clust_df) <- "Pred. Clusters"
     
@@ -1339,8 +1339,16 @@ plot.alluvial <- function(clust_df, gt.clust, var_explain, save_path="."){
         df = clust_df[, c(axes, v)] %>% dplyr::group_by_all() %>% dplyr::count(name='Frequency')
         
         # Create aes string 
-        aes_text = paste0("aes(", paste0(paste0("axis", 1:length(axes), " = .data[[axes[", 1:length(axes), "]]]"), collapse = ", "), ", ",
-                          paste0("axis", length(axes)+1, " = ", v), ", y = Frequency)")
+        # aes_text = paste0("aes(", paste0(paste0("axis", 1:length(axes), " = .data[[axes[", 1:length(axes), "]]]"), collapse = ", "), ", ",
+        #                   paste0("axis", length(axes)+1, " = ", v), ", y = Frequency)")
+        aes_text <- paste0(
+          "ggplot2::aes(",
+          paste0(
+            paste0("axis", seq_along(axes), " = .data[[axes[", seq_along(axes), "]]]"),
+            collapse = ", "
+          ),
+          ", axis", length(axes) + 1, " = .data[[v]], y = Frequency)"
+        )
         
         # plot
         ggplot(data = df,
@@ -1349,7 +1357,8 @@ plot.alluvial <- function(clust_df, gt.clust, var_explain, save_path="."){
                eval(parse(text = aes_text))) +
             scale_x_discrete(limits = c(axes, v), expand = c(.2, .05)) +
             #xlab("Clusters and explain variable") +
-            geom_alluvium(aes(fill = !!sym(v))) +
+            #geom_alluvium(aes(fill = !!sym(v))) +
+            geom_alluvium(aes(fill = .data[[v]])) +
             geom_stratum() +
             #geom_text(stat = "stratum", aes(label = after_stat(stratum)), size= 2.5) +
             ggfittext::geom_fit_text(stat = "stratum", aes(label = after_stat(stratum)), 
