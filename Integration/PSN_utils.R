@@ -787,17 +787,25 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
             
             
             # save interactive graph
-            V(g)$sel <- paste(V(g)$color, V(g)$shape, sep = ",")
+            V(g)$gt_clust <- as.character(gt.clust_sub)
+            V(g)$pred_clust <- as.character(pred.clust_sub)
+            
             ig.save <- visIgraph(g) %>%
-                visOptions(highlightNearest = list(enabled = T, hover = T), 
-                           nodesIdSelection = list(enabled=T, main="Select by name"), 
-                           selectedBy = list(variable="sel", main="Select by color or shape", multiple=T)) %>%
-                visLegend(position = "right", useGroups=F, addNodes = nodes_attr, 
-                          main = main_title, width = 0.1)  %>%
-                htmlwidgets::onRender("function(el, x) {
-                                            el.style.height = '600px';
-                                            el.style.width = '100%';
-                                      }")
+              visOptions(
+                highlightNearest = list(enabled = TRUE, hover = TRUE), 
+                nodesIdSelection = list(enabled = TRUE, main = "Select by sample"),
+                selectedBy = list(
+                  list(variable = "gt_clust", main = "Select by ground-truth cluster", multiple = TRUE),
+                  list(variable = "pred_clust", main = "Select by predicted cluster", multiple = TRUE)
+                )
+              ) %>%
+              visLegend(position = "right", useGroups = FALSE, addNodes = nodes_attr, 
+                        main = main_title, width = 0.1) %>%
+              htmlwidgets::onRender("function(el, x) {
+                                el.style.height = '600px';
+                                el.style.width = '100%';
+                          }")
+            
             saveWidget(ig.save, file = file.path(path, paste0("Similarity_graph_",omic, ".html")))
             
             
@@ -835,12 +843,14 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
                                      )
             
             # save interactive graph
+            V(g)$pred_clust <- as.character(pred.clust_sub)
+            
             ig.save <- visIgraph(g) %>%
                 visLegend(position = "right", useGroups=F, addNodes = nodes_attr,
                           main = main_title, width = 0.1) %>% 
                 visOptions(highlightNearest = list(enabled = T, hover = T), 
                           nodesIdSelection = list(enabled=T, main="Select by name"), 
-                          selectedBy = list(variable="color", main="Select by color")) %>%
+                          selectedBy = list(variable = "pred_clust", main = "Select by predicted cluster") %>%
                 htmlwidgets::onRender("function(el, x) {
                                             el.style.height = '600px';
                                             el.style.width = '100%';
