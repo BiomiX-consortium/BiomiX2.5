@@ -641,6 +641,19 @@ add_shape("hexagon", clip = igraph.shape.noclip, plot = hexagon_shape)
 make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".", 
                        sparse_method="KNN", K){
     
+    if (!is.factor(pred.clust)) {
+      warning("pred.clust is not a factor. Converting it to factor.")
+      pred.clust <- factor(pred.clust)
+    }
+  
+    if (!is.null(gt.clust)) {
+      
+      if (!is.factor(gt.clust)) {
+        warning("gt.clust is not a factor. Converting it to factor.")
+        gt.clust <- factor(gt.clust)
+      }
+    }
+  
     pal <- c("lightgreen", "plum", "darkorange", "gold", "lightblue", "forestgreen", 
              "firebrick", "blue")
     
@@ -661,12 +674,27 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
         if(!is.null(gt.clust)){
             common_samples <- intersect(rownames(mat), names(gt.clust))
             mat <- mat[common_samples, common_samples]
-            gt.clust <- gt.clust[common_samples]
-            pred.clust <- pred.clust[common_samples]
+            gt.clust_sub <- gt.clust[common_samples]
+            pred.clust_sub <- pred.clust[common_samples]
+            
+            # Drop unused levels
+            gt.clust_sub <-  droplevels(gt.clust_sub)
+            pred.clust_sub <- droplevels(pred.clust_sub)
         } else {
             common_samples <- intersect(rownames(mat), names(pred.clust))
             mat <- mat[common_samples, common_samples]
-            pred.clust <- pred.clust[common_samples]
+            pred.clust_sub <- pred.clust[common_samples]
+            
+            # Drop unused levels
+            pred.clust_sub <- droplevels(pred.clust_sub)
+        }
+        
+        if (!identical(rownames(mat), names(pred.clust_sub))) {
+          stop(omic, ": predicted clustering is not aligned with matrix rows.")
+        }
+        
+        if (!is.null(gt.clust) && !identical(rownames(mat), names(gt.clust_sub))) {
+          stop(omic, ": ground-truth clustering is not aligned with matrix rows.")
         }
         
         #Normalize matrix
@@ -693,23 +721,23 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
             
             
             possible.shapes <- c("circle", "square", "star", "triangle", "diamond", "hexagon")
-            if(length(unique(pred.clust)) > length(possible.shapes)){
+            if(length(unique(pred.clust_sub)) > length(possible.shapes)){
                 warning("Number of predicted clusters is greater than the number of possible shapes! 
                         Some clusters will have the same shape.")
             }
-            possible.shapes <- rep(possible.shapes, ceiling(length(unique(pred.clust))/length(possible.shapes)))
-            shapes <- possible.shapes[1:length(unique(pred.clust))]
-            V(g)$shape <- shapes[as.factor(pred.clust)]
+            possible.shapes <- rep(possible.shapes, ceiling(length(unique(pred.clust_sub))/length(possible.shapes)))
+            shapes <- possible.shapes[1:length(unique(pred.clust_sub))]
+            V(g)$shape <- shapes[as.integer(pred.clust_sub)]
             
             set.seed(123)
-            if(length(unique(gt.clust)) > 8){
+            if(length(unique(gt.clust_sub)) > 8){
                 warning("Number of ground truth clusters is greater than the number of colors! 
                         Some clusters will have the same color.")
             }
             
-            colors <- rep(pal, ceiling(length(unique(gt.clust))/8))
-            colors <- colors[1:length(unique(gt.clust))]
-            V(g)$color <- colors[gt.clust]
+            colors <- rep(pal, ceiling(length(unique(gt.clust_sub))/8))
+            colors <- colors[1:length(unique(gt.clust_sub))]
+            V(g)$color <- colors[as.integer(gt.clust_sub)]
             
             png(file.path(path, paste0("Similarity_graph_",omic, ".png")), 
                 width=1000, height=700, res=150)
@@ -718,17 +746,17 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
                  main=main_title)
             
             legend("topright", 
-                   legend = levels(gt.clust),
+                   legend = levels(gt.clust_sub),
                    pch = 21,
                    pt.bg = colors,
                    title = "Clusters",
                    bty = "n", inset=c(-0.25,0))
             
             pch_vec <- c(1, 0, 8, 2, 18, 72)
-            pch_vec <- rep(pch_vec, ceiling(length(unique(pred.clust))/length(pch_vec)))
-            pch_vec <- pch_vec[1:length(unique(pred.clust))]
+            pch_vec <- rep(pch_vec, ceiling(length(unique(pred.clust_sub))/length(pch_vec)))
+            pch_vec <- pch_vec[1:length(unique(pred.clust_sub))]
             legend("bottomright", 
-                   legend = levels(as.factor(pred.clust)),
+                   legend = levels(as.factor(pred.clust_sub)),
                    pch = pch_vec,
                    title = "Pred. Clusters",
                    bty = "n", inset=c(-0.25,0))
@@ -736,13 +764,26 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
             
             shapes <- ifelse(shapes == "circle", "dot", shapes)
             
-            nodes_attr <- data.frame(color=rep(colors, each=length(shapes)), 
-                                     shape=rep(shapes, times=length(unique(colors))), 
-                                     label=paste0("Clust. (color): ", rep(levels(gt.clust), 
-                                                                       each=length(unique(pred.clust))), 
-                                                  ";\n Pred. Clust. (shape):", rep(levels(as.factor(pred.clust)), 
-                                                                         times=length(levels(gt.clust)))
-                                     ))
+            # nodes_attr <- data.frame(color=rep(colors, each=length(shapes)), 
+            #                          shape=rep(shapes, times=length(unique(colors))), 
+            #                          label=paste0("Clust. (color): ", rep(levels(gt.clust_sub), 
+            #                                                            each=length(unique(pred.clust_sub))), 
+            #                                       ";\n Pred. Clust. (shape):", rep(levels(as.factor(pred.clust_sub)), 
+            #                                                              times=length(levels(gt.clust_sub)))
+            #                          ))
+            nodes_attr <- expand.grid(
+              gt = seq_along(levels(gt.clust_sub)),
+              pred = seq_along(levels(pred.clust_sub))
+            )
+            
+            nodes_attr <- data.frame(
+              color = colors[nodes_attr$gt],
+              shape = ifelse(shapes[nodes_attr$pred] == "circle", "dot", shapes[nodes_attr$pred]),
+              label = paste0(
+                "Clust. (color): ", levels(gt.clust_sub)[nodes_attr$gt],
+                ";\nPred. Clust. (shape): ", levels(pred.clust_sub)[nodes_attr$pred]
+              )
+            )
             
             
             # save interactive graph
@@ -757,7 +798,7 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
                                             el.style.height = '600px';
                                             el.style.width = '100%';
                                       }")
-            saveWidget(ig.save, file = file.path(path, paste0("Similarity_graph_",omic, ".html")),selfcontained = FALSE)
+            saveWidget(ig.save, file = file.path(path, paste0("Similarity_graph_",omic, ".html")))
             
             
         } else {
@@ -766,13 +807,13 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
             
             
             set.seed(123)
-            if(length(unique(pred.clust)) > 8){
+            if(length(unique(pred.clust_sub)) > 8){
                 warning("Number of clusters is greater than the number of colors! 
                         Some clusters will have the same color.")
             }
-            colors <- rep(pal, ceiling(length(unique(pred.clust))/8))
-            colors <- colors[1:length(unique(pred.clust))]
-            V(g)$color <- colors[pred.clust]
+            colors <- rep(pal, ceiling(length(unique(pred.clust_sub))/8))
+            colors <- colors[1:length(unique(pred.clust_sub))]
+            V(g)$color <- colors[as.integer(pred.clust_sub)]
             
             png(file.path(path, paste0("Similarity_graph_",omic, ".png")), 
                 width=1000, height=700, res=150)
@@ -781,16 +822,17 @@ make_graph <- function(mat_list, gt.clust=NULL, pred.clust, path=".",
                  main=main_title)
             
             legend("right", 
-                   legend = levels(as.factor(pred.clust)),
+                   legend = levels(as.factor(pred.clust_sub)),
                    pch = 21,
                    pt.bg = colors,
                    title = "Pred. Clusters",
                    bty = "n", inset=c(-0.25,0))
             dev.off()
             
-            nodes_attr <- data.frame(label=paste("Pred.:", sort(unique(pred.clust))), 
+            nodes_attr <- data.frame(label=paste("Pred.:", levels(pred.clust_sub)), 
                                      color=colors, 
-                                     shape= rep("dot", length(unique(pred.clust))))
+                                     shape= rep("dot", length(levels(pred.clust_sub)))
+                                     )
             
             # save interactive graph
             ig.save <- visIgraph(g) %>%
