@@ -393,11 +393,10 @@ plot_imp_heatmap(data$data, feat_imp, pred.clust=pred.clust, gt.clust=gt.clust,
 
 # add fake survival data (just to test the function)
 # set.seed(123)
-# metadata <- data$metadata # identical in different modalities
-# metadata$OS.time <- sample(1:100, nrow(metadata), replace=T)
-# metadata$OS.event <- sample(0:1, nrow(metadata), replace=T)
-# metadata$DFS.time <- sample(1:100, nrow(metadata), replace=T)
-# metadata$DFS.event <- sample(0:1, nrow(metadata), replace=T)
+# data$metadata$OS.time <- sample(1:100, nrow(data$metadata), replace=T)
+# data$metadata$OS.event <- sample(0:1, nrow(data$metadata), replace=T)
+# data$metadata$DFS.time <- sample(1:100, nrow(data$metadata), replace=T)
+# data$metadata$DFS.event <- sample(0:1, nrow(data$metadata), replace=T)
 # enrich_vars <- c("GENDER", "AGE")
 # surv_vars <- c("OS.time", "OS.event", "DFS.time", "DFS.event")
 
@@ -414,14 +413,14 @@ if (length(valid_surv_vars) > 0 || length(valid_enrich_vars) > 0) {
                                           valid_enrich_vars, valid_surv_vars, 
                                           file_path="enrichment_survival_analysis")
   
-  enrich_surv_res_save <- rbind(enrich_surv_res$result$enrich_res, 
-                                enrich_surv_res$result$surv_res)
+  enrich_surv_res_save <- rbind(enrich_surv_res$enrich_res, 
+                                enrich_surv_res$surv_res)
   write.csv(enrich_surv_res_save, 
             file="enrichment_survival_analysis/enrichment_survival_results.csv", 
             row.names=T)
   
   write.csv(enrich_surv_res$warning_log, 
             file="enrichment_survival_analysis/enrichment_survival_results_warnings.csv", 
-            row.names=T)
+            row.names=F)
 }
 
