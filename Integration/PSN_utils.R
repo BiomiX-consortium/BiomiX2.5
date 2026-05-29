@@ -1654,12 +1654,15 @@ extract_subset_stats <- function(cb_list, k_vec) {
 #' 
 #' @export
 nemo.affinity.graph_fix <- function(raw.data, k=NA) {
+  
   if (any(is.na(k))) {
     k = as.numeric(lapply(1:length(raw.data), function(i) round(ncol(raw.data[[i]]) / NUM.NEIGHBORS.RATIO)))
     message(paste("k was NA, set to", as.character(k), "\n"))
   } else if (length(k) == 1) {
     k = rep(k, length(raw.data))
     message(paste("k set to", as.character(k)))
+  } else if (length(k) != length(raw.data)) {
+    stop("k should be either a single number, a list of numbers of the same length as raw.data, or NA.")
   }
   sim.data = lapply(1:length(raw.data), function(i) {affinityMatrix(dist2(as.matrix(t(raw.data[[i]])),
                                                                           as.matrix(t(raw.data[[i]]))), k[i], 0.5)})
