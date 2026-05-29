@@ -1112,44 +1112,112 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
     # Compute enrichment analysis and log-rank test for each cluster
     # with respect to the selected variables
     
-    res <- list(enrich_res=NULL, surv_res=NULL)
+    res <- list(enrich_res=NULL, surv_res=NULL, warning_log=NULL)
+    
+    warning_log <- data.frame(
+        analysis = character(),
+        K = character(),
+        variable = character(),
+        test = character(),
+        message = character(),
+        stringsAsFactors = FALSE
+    )
+    
     
     ###### Compute enrichment analysis
     if(length(enrich_vars) > 0){
+      
         
         enrich_res <- apply(clustering, 2, function(cl) {
             message("Computing enrichment analysis for cluster K: ", length(unique(cl)))
             ps <- sapply(enrich_vars, function(v) {
                 
                 if(is.character(metadata[[v]])){
-                    print(cl)
+                    #print(cl)
                     enrich_data <- data.frame(var=metadata[[v]], clust=as.factor(cl))
-                    enrich_data
+                    #enrich_data
                     enrich_data <- enrich_data[complete.cases(enrich_data), ] # Consider only complete.cases
                     
-                    
+                    if (nrow(enrich_data) == 0 ||
+                        length(unique(enrich_data$clust)) < 2 ||
+                        length(unique(enrich_data$var)) < 2) {
+                      warning(v, ": Not enough data to perform chi-squared test. Skipping variable.")
+                      return(NA_real_)
+                    }
                     
                     # apply chi-squared test
                     #res.sim <- chisq.test(as.factor(metadata[,v]), as.factor(cl), 
                     #                    simulate.p.value = T, B=10000)
                     message("\tChi-squared test on variable ", v)
-                    p.val <- chisq.test(enrich_data$var, enrich_data$clust, 
-                                        simulate.p.value = F)$p.value
+                    warn_msg <- NA
+                    p.val <- withCallingHandlers(
+                        chisq.test(enrich_data$var, enrich_data$clust, 
+                                   simulate.p.value = F)$p.value,
+                        warning = function(w) {
+                            warn_msg <<- conditionMessage(w)
+                            invokeRestart("muffleWarning")
+                        }
+                    )
+                    # p.val <- chisq.test(enrich_data$var, enrich_data$clust, 
+                    #                     simulate.p.value = F)$p.value
                     
+                    if (!is.na(warn_msg)) {
+                        warning_log <<- rbind(
+                            warning_log,
+                            data.frame(
+                                analysis = "enrichment",
+                                K = length(unique(cl)),
+                                variable = v,
+                                test = "chisq.test",
+                                message = warn_msg
+                            )
+                        )
+                    }
+                    
+                    return(p.val)
                 } else if(is.numeric(metadata[[v]])){
                     
                     enrich_data <- data.frame(var=metadata[[v]], clust=as.factor(cl))
                     enrich_data <- enrich_data[complete.cases(enrich_data), ] # Consider only complete.cases
                     
+                    if (nrow(enrich_data) == 0 ||
+                        length(unique(enrich_data$clust)) < 2) {
+                      warning(v, ": Not enough data to perform Kruskal-Wallis test. Skipping variable.")
+                      return(NA_real_)
+                    }
+                    
                     # apply kruskal-wallis test
                     message("\tKruskal-Wallis test on variable ", v)
-                    p.val <- kruskal.test(enrich_data$var, enrich_data$clust)$p.value
-                }
+                    warn_msg <- NA
+                    
+                    p.val <- withCallingHandlers(
+                        kruskal.test(enrich_data$var, enrich_data$clust)$p.value,
+                        warning = function(w) {
+                            warn_msg <<- conditionMessage(w)
+                            invokeRestart("muffleWarning")
+                        }
+                    )
+                    #p.val <- kruskal.test(enrich_data$var, enrich_data$clust)$p.value
+                    
+                    if (!is.na(warn_msg)) {
+                        warning_log <<- rbind(
+                            warning_log,
+                            data.frame(
+                                analysis = "enrichment",
+                                K = length(unique(cl)),
+                                variable = v,
+                                test = "kruskal.test",
+                                message = warn_msg
+                            )
+                        )
+                    }
                 
+                    return(p.val)
+                }
             })
             
             # Adjust p-values
-            print(ps)
+            #print(ps)
             ps.adj = p.adjust(ps, method = "BH")
         })
         
@@ -1177,31 +1245,92 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
             ps <- sapply(endpoint_names, function(v) {
                 
                 # plot KM curves
+                if(!all(c(paste0(v, ".time"), paste0(v, ".event")) %in% colnames(metadata))){
+                    stop(paste0("Missing columns for endpoint ", v, ". Expected columns: ", 
+                                paste0(v, ".time"), " and ", paste0(v, ".event")))
+                }
+                
                 message("\tComputing log-rank test for endpoint ", v)
                 
                 surv_data <- metadata[, c(paste0(v, ".time"), paste0(v, ".event"))]
                 surv_data$clust <- cl
                 surv_data <- surv_data[complete.cases(surv_data),] # Consider only complete.cases
                 
-                if(any(surv_data[, paste0(v, ".event")] %in% c('yes', 'no'))){
-                    surv_data[, paste0(v, ".event")] = as.numeric(surv_data[, paste0(v, ".event")] == 'yes')
+                if (nrow(surv_data) == 0 || length(unique(surv_data$clust)) < 2) {
+                  warning(v, ": Not enough data to perform log-rank test. Skipping variable.")
+                  return(NA_real_)
                 }
+                
+                # if(any(surv_data[, paste0(v, ".event")] %in% c('yes', 'no'))){
+                #     surv_data[, paste0(v, ".event")] = as.numeric(surv_data[, paste0(v, ".event")] == 'yes')
+                # }
+                event <- surv_data[[paste0(v, ".event")]]
+                
+                if (is.character(event) || is.factor(event)) {
+                  event <- tolower(trimws(as.character(event)))
+                  if (all(event %in% c("yes", "no"))) {
+                    event <- as.numeric(event == "yes")
+                    
+                    if (!all(na.omit(event) %in% c(0, 1))){
+                        stop(v, ".event must be binary after conversion to 0/1.")
+                    } 
+                        
+                  } else {
+                    warning(v, ": event variable is character/factor but not yes/no; skipping.")
+                    return(NA_real_)
+                  }
+                }
+                
+                surv_data[[paste0(v, ".event")]] <- event
+                
+                if (sum(surv_data[[paste0(v, ".event")]] == 1, na.rm = TRUE) == 0) {
+                  warning(v, ": no events after filtering; skipping.")
+                  return(NA_real_)
+                }
+                
                 
                 formula.text <- paste0('Surv(', paste0(v, ".time,"),paste0(v, ".event"),') ~ clust')
                 form <- as.formula(formula.text)
                 
                 km <- surv_fit(formula=form, data=surv_data)
                 
-                ggsurvplot(km, data=surv_data, title= v, conf.int = T, ggtheme = theme_gray()) 
-                ggsave(paste0("KM_", v, "_K",length(unique(cl)), ".png"),  bg="white", 
+                pp <- ggsurvplot(km, data=surv_data, title= v, conf.int = T, ggtheme = theme_gray()) 
+                ggsave(paste0("KM_", v, "_K",length(unique(cl)), ".png"), plot=pp,  bg="white", 
                        path=file_path, width=15, height=10, units="cm")
                 
-                p.val <- survdiff(formula=form, data=surv_data)$pvalue
+                warn_msg <- NA
+                
+                p.val <- withCallingHandlers(
+                    survdiff(formula=form, data=surv_data)$pvalue,
+                    warning = function(w) {
+                        warn_msg <<- conditionMessage(w)
+                        invokeRestart("muffleWarning")
+                    }
+                )    
+                
+                #p.val <- survdiff(formula=form, data=surv_data)$pvalue
+                
+                if (!is.na(warn_msg)) {
+                    warning_log <<- rbind(
+                        warning_log,
+                        data.frame(
+                            analysis = "survival",
+                            K = length(unique(cl)),
+                            variable = v,
+                            test = "log-rank test",
+                            message = warn_msg
+                        )
+                    )
+                }
+                
+                return(p.val)
             })
         })
         
         res$surv_res <- surv_res
     }
+    
+    res$warning_log <- warning_log
     
     return(res)
 }

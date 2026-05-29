@@ -449,12 +449,14 @@ if (!is.null(feat_imp)) {
 
 dir.create("enrichment_survival_analysis", showWarnings = FALSE)
 
-if (surv_vars != "X") {
+valid_surv_vars <- surv_vars[surv_vars != "X"]
+
+if (length(valid_surv_vars) > 0 || length(valid_enrich_vars) > 0) {
   
-  quiet_enrich_surv_analysis <- quietly(enrich_surv_analysis) # Catch warnings
-  enrich_surv_res <- quiet_enrich_surv_analysis(clustering, metadata=metadata, 
-                                                enrich_vars, surv_vars, 
-                                                file_path="enrichment_survival_analysis")
+  #quiet_enrich_surv_analysis <- quietly(enrich_surv_analysis) # Catch warnings
+  enrich_surv_res <- enrich_surv_analysis(clustering, metadata=data$metadata, 
+                                          valid_enrich_vars, valid_surv_vars, 
+                                          file_path="enrichment_survival_analysis")
   
   enrich_surv_res_save <- rbind(enrich_surv_res$result$enrich_res, 
                                 enrich_surv_res$result$surv_res)
@@ -462,7 +464,7 @@ if (surv_vars != "X") {
             file="enrichment_survival_analysis/enrichment_survival_results.csv", 
             row.names=T)
   
-  write.csv(enrich_surv_res$warnings, 
+  write.csv(enrich_surv_res$warning_log, 
             file="enrichment_survival_analysis/enrichment_survival_results_warnings.csv", 
             row.names=T)
 }
