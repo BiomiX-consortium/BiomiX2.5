@@ -1217,8 +1217,9 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
             })
             
             # Adjust p-values
-            #print(ps)
+            message(paste("\t Raw p-value:", ps))
             ps.adj = p.adjust(ps, method = "BH")
+            message(paste("\t Adjusted p-value:", ps.adj))
         })
         
         res$enrich_res <- enrich_res
@@ -1294,7 +1295,8 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
                 
                 km <- surv_fit(formula=form, data=surv_data)
                 
-                pp <- ggsurvplot(km, data=surv_data, title= v, conf.int = T, ggtheme = theme_gray()) 
+                pp <- ggsurvplot(km, data=surv_data, title= v, conf.int = T, 
+                                 ggtheme = theme_gray(), linetype=NULL)
                 ggsave(paste0("KM_", v, "_K",length(unique(cl)), ".png"), plot=pp$plot,  bg="white", 
                        path=file_path, width=15, height=10, units="cm")
                 
@@ -1307,7 +1309,7 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
                         invokeRestart("muffleWarning")
                     }
                 )    
-                
+                message("\tTest p-value: ", p.val)
                 #p.val <- survdiff(formula=form, data=surv_data)$pvalue
                 
                 if (!is.na(warn_msg)) {
