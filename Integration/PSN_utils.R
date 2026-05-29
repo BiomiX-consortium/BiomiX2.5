@@ -1217,9 +1217,8 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
             })
             
             # Adjust p-values
-            message(paste("\t Raw p-value:", ps))
             ps.adj = p.adjust(ps, method = "BH")
-            message(paste("\t Adjusted p-value:", ps.adj))
+            message(paste("\tRaw p-value:", ps, "\n \tAdjusted p-value:", ps.adj, "\n"))
         })
         
         res$enrich_res <- enrich_res
