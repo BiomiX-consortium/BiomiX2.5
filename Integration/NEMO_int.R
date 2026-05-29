@@ -423,16 +423,16 @@ if (length(valid_enrich_vars) > 0) {
 }
 
 # Which are the most important features for integration?----
-
-
-dir.create("feature_importance", showWarnings = FALSE)
-write.csv(feat_imp, file="feature_importance/feature_importance.csv", row.names=F)
-
-# Heatmap of top_feat important features----
-plot_imp_heatmap(data$data, feat_imp, pred.clust=pred.clust, gt.clust=gt.clust, 
-                 top_feat=top_feat, save_path="./feature_importance")
 feat_imp <- compute_feature_importance(data$data, pred.clust, K=K.nemo_vec, sigma=0.5)
 
+if (!is.null(feat_imp)) {
+  dir.create("feature_importance", showWarnings = FALSE)
+  write.csv(feat_imp, file="feature_importance/feature_importance.csv", row.names=F)
+  
+  # Heatmap of top_feat important features
+  plot_imp_heatmap(data$data, feat_imp, pred.clust=pred.clust, gt.clust=gt.clust, 
+                   top_feat=top_feat, save_path="./feature_importance")
+}
 
 # Compute variables enrichment and log-rank test----
 
