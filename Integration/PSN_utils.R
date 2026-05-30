@@ -1128,7 +1128,9 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
     if(length(enrich_vars) > 0){
       
         
-        enrich_res <- apply(clustering, 2, function(cl) {
+        enrich_res <- lapply(seq_len(ncol(clustering)), function(i) {
+            cl <- clustering[, i]
+            
             message("Computing enrichment analysis for cluster K: ", length(unique(cl)))
             ps <- sapply(enrich_vars, function(v) {
                 
@@ -1219,8 +1221,19 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
             # Adjust p-values
             ps.adj = p.adjust(ps, method = "BH")
             message(paste("\tRaw p-value:", ps, "\n \tAdjusted p-value:", ps.adj, "\n"))
+            
+            # return for each number of clusters
+            return(data.frame(
+              analysis = "enrichment",
+              K = length(unique(cl)),
+              variable = names(ps),
+              p_value = as.numeric(ps),
+              p_adj = as.numeric(ps.adj),
+              stringsAsFactors = FALSE
+            ))
         })
         
+        enrich_res <- do.call(rbind, enrich_res)
         res$enrich_res <- enrich_res
     }
     
@@ -1239,7 +1252,9 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
         # Compute log-rank test
         # event is given as input as yes and no
         
-        surv_res <- apply(clustering, 2, function(cl) {
+        surv_res <- lapply(seq_len(ncol(clustering)), function(i) {
+          
+            cl <- clustering[, i]
             message("Computing survival analysis for cluster K: ", length(unique(cl)))
             
             ps <- sapply(endpoint_names, function(v) {
@@ -1308,7 +1323,7 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
                         invokeRestart("muffleWarning")
                     }
                 )    
-                message("\tTest p-value: ", p.val)
+                #message("\tTest p-value: ", p.val)
                 #p.val <- survdiff(formula=form, data=surv_data)$pvalue
                 
                 if (!is.na(warn_msg)) {
@@ -1326,8 +1341,24 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
                 
                 return(p.val)
             })
+            
+            
+            # Adjust p-values
+            ps.adj = p.adjust(ps, method = "BH")
+            message(paste("\tRaw p-value:", ps, "\n \tAdjusted p-value:", ps.adj, "\n"))
+            
+            # return for each number of clusters
+            return(data.frame(
+              analysis = "survival",
+              K = length(unique(cl)),
+              variable = names(ps),
+              p_value = as.numeric(ps),
+              p_adj = as.numeric(ps.adj),
+              stringsAsFactors = FALSE
+            ))
         })
         
+        surv_res <- do.call(rbind, surv_res)
         res$surv_res <- surv_res
     }
     
