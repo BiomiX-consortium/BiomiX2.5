@@ -44,7 +44,8 @@ read_data <- function(input_path){
 #' @description
 #' This function performs the following pre-processing steps:
 #' - Retain the subset of samples having all omics in data and metadata for SNF; 
-#' while retains only samples having associated metadata for NEMO.
+#' while retains only samples having associated metadata for NEMO if
+#' only_common_samples=FALSE. 
 #' - Remove features having missing values
 #' - remove zero-variance features
 #' - Feature selection by variance (optional)
@@ -381,6 +382,16 @@ scaled.exp.euclidean <- function(M, K=20, sigma=0.5){
 
 #' Plot heatmaps of affinity matrices
 #'
+#' @description
+#' This function plots heatmaps of affinity matrices. If the ground truth clustering 
+#' is provided, the samples are ordered according to the ground truth clustering 
+#' and the predicted clustering is shown as annotation on the heatmap. 
+#' If the ground truth clustering is not provided, the samples are ordered according to
+#' the predicted clustering.
+#' In case of multiple affinity matrices with different number of samples, gt.clust
+#' and pred.clust should be provided only for the affinity matrix with the highest 
+#' number of samples (basically the integrated matrix).
+#'
 #' @param mat_list list. Named list of affinity matrices.
 #' @param gt.clust factor. Factor containing the ground truth clustering (def. NULL).
 #' @param pred.clust vector. Named vector of predicted clustering.
@@ -476,7 +487,7 @@ make_heatmap <- function(mat_list, gt.clust=NULL, pred.clust,
 #' Normalize affinity matrix
 #' 
 #' @description
-#' Normalize matrix by sum of its rows.
+#' Normalize matrix by sum of its rows followed by symmetrization.
 #' 
 #'
 #' @param W matrix.
@@ -621,6 +632,20 @@ add_shape("hexagon", clip = igraph.shape.noclip, plot = hexagon_shape)
 
 
 #' Plot network from affinity matrix
+#' 
+#' @description
+#' Plot a network from an affinity matrix. The function allows to sparsify the 
+#' graph for visualization and to compare the predicted clustering with the 
+#' ground truth clustering (if provided) and predicted clustering.
+#' 
+#' If the ground truth clustering is not provided, the samples are colored according 
+#' to the predicted clustering. If the ground truth clustering is provided, 
+#' the samples are colored according to the ground truth clustering and the 
+#' predicted clustering showed with different shapes.
+#' In case of multiple affinity matrices with different number of samples, gt.clust
+#' and pred.clust should be provided only for the affinity matrix with the highest 
+#' number of samples (basically the integrated matrix).
+#' 
 #'
 #' @param mat_list list. Named list of affinity matrices.
 #' @param gt.clust factor. Factor containing the ground truth clustering (def. NULL).
@@ -1089,8 +1114,8 @@ compute_feature_importance <- function(mat_data, clustering, K, sigma=0.5){
 #' categorical variables and Kruskal-Wallis test for numerical variables
 #' - Survival analysis using the log-rank test
 #' 
-#' The p-values for enrichment of clinical variables are corrected for multiple
-#' testing using Benjamini-Hochberg procedure.
+#' The p-values for enrichment of clinical variables and log-rank tests are corrected 
+#' for multiple testing using Benjamini-Hochberg procedure.
 #' A Kaplan-Meier (KM) plot us saved for each endpoint and number of clusters considered.
 #' 
 #'
@@ -1101,7 +1126,7 @@ compute_feature_importance <- function(mat_data, clustering, K, sigma=0.5){
 #' survival analysis.
 #' @param file_path string. Path to save results
 #'
-#' @return KM plots and p-values of statistical tests.
+#' @return KM plots and p-values of statistical tests (nominal and adjusted).
 #' 
 #' @author Jessica Gliozzo
 #' 
@@ -1372,14 +1397,16 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
 #'
 #' @description
 #' 
-#'  Plot the Silhouette score and Dunn index w.r.t. the number of clusters
+#'  Plot the "Mean Silhouette Coefficient", "Dunn Index", "Entropy" and 
+#'  "Calinski and Harabasz index" w.r.t. the number of clusters
 #'  evaluated. The plot is saved in the directory "clustering_metrics", which
 #'  is automatically created in the current position if not exists.
 #'
 #' @param int.val.idx dataframe. Dataframe (indices x number of clusters).
 #' @param nc_range vector. Vectors with the number of clusters evaluated.
 #'
-#' @return Save a png plot of the Silhouette score, Dunn index and Entropy.
+#' @return Save a png plot of the Silhouette score, Dunn index, Entropy and
+#' Calinski and Harabasz index w.r.t. the number of clusters.
 #' 
 #' @author Jessica Gliozzo
 #' 
@@ -1473,7 +1500,7 @@ plot_ext.val.idx <- function(ext.val.idx, nc_range,
 #' ground truth clustering and variable of interest. In particular, one plot
 #' is automatically saved for each variable of interest.
 #' 
-#' If no ground truth clustering or variable of interest is provided, no plot 
+#' If no ground truth clustering or variable of interest are provided, no plot 
 #' is generated and a message is printed.
 #' 
 #'
@@ -1640,6 +1667,7 @@ check_names <- function(sim_mat, metadata){
 #' This function plots a heatmap of the top features. 
 #' The features are ordered by their importance score and the samples are
 #' ordered by their ground truth clustering (if available) or predicted clustering.
+#' The heatmap is saved as a PNG file in the specified path.
 #' 
 #'
 #' @param data list. List of dataframes (samples x features), one for each modality.
@@ -1922,7 +1950,7 @@ nemo.affinity.graph_fix <- function(raw.data, k=NA) {
 }
 
 
-#' @title Warn about missing samples per omic for NEMO
+#' Warn about missing samples per omic for NEMO
 #' 
 #' Warn if one or more omics are missing more than 20% of the samples
 #' This check is specific for NEMO, where samples may be partially missing
@@ -1935,8 +1963,8 @@ nemo.affinity.graph_fix <- function(raw.data, k=NA) {
 #' @param threshold A numeric value between 0 and 1 indicating the fraction of 
 #' missing samples per omic
 #'
-#' @returns A list of omics that are missing more than the specified threshold of samples, 
-#' along with the fraction of missing samples for each.
+#' @returns A dataframe summarizing the number and fraction of missing samples 
+#' for each omic, and a warning message if any omic exceeds the threshold.
 #' @export
 #'
 #' @examples
