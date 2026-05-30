@@ -1999,3 +1999,79 @@ warn_missing_omics_samples <- function(data_list, metadata, threshold = 0.20) {
     
     return(missing_summary)
 }
+
+
+#' Check pairwise sample overlap across omics for NEMO
+#' 
+#' Check the pairwise sample overlap across omics to ensure that there 
+#' are no pairs of samples that are completely non-overlapping across all omics, 
+#' which would cause NEMO to fail. Stop if any such pairs are found.
+#'
+#' @param data_list A list of dataframes, where each dataframe corresponds to an omic 
+#' and has samples as rows and features as columns. Sample IDs must be stored as rownames.
+#' @param metadata A dataframe containing sample metadata, with a column named 'ID' that 
+#' contains the sample IDs.
+#'
+#' @return Data frame listing pairs of samples with zero omics in common is saved
+#' in current directory or NULL.
+#' @export
+#'
+#' @examples
+check_nemo_pairwise_overlap <- function(data_list, metadata) {
+  
+  if (!"ID" %in% colnames(metadata)) {
+    stop("metadata must contain an 'ID' column.")
+  }
+  
+  all_samples <- metadata$ID
+  
+  if (anyDuplicated(all_samples)) {
+    stop("metadata$ID contains duplicated sample IDs.")
+  }
+  
+  # Build sample x omic presence matrix
+  presence_mat <- sapply(names(data_list), function(omic) {
+    
+    omic_samples <- rownames(data_list[[omic]])
+    
+    if (is.null(omic_samples)) {
+      stop("Omic '", omic, "' has no rownames. Sample IDs must be stored as rownames.")
+    }
+    
+    return(all_samples %in% omic_samples)
+  })
+  
+  rownames(presence_mat) <- all_samples
+  
+  # Number of common omics for every sample pair
+  pairwise_overlap <- presence_mat %*% t(presence_mat)
+  
+  # Find sample pairs with zero omics in common
+  bad_pairs_idx <- which(pairwise_overlap == 0, arr.ind = TRUE)
+  
+  # Keep only each pair once, excluding diagonal
+  bad_pairs_idx <- bad_pairs_idx[bad_pairs_idx[, 1] < bad_pairs_idx[, 2], , drop = FALSE]
+  
+  bad_pairs <- data.frame(
+    sample_1 = rownames(pairwise_overlap)[bad_pairs_idx[, 1]],
+    sample_2 = colnames(pairwise_overlap)[bad_pairs_idx[, 2]],
+    stringsAsFactors = FALSE
+  )
+  
+  if (nrow(bad_pairs) > 0) {
+    write.csv(
+      bad_pairs,
+      file = "nemo_pairwise_overlap_issues.csv",
+      row.names = FALSE
+    )
+    
+    stop(
+      "NEMO pairwise overlap condition failed: ",
+      nrow(bad_pairs),
+      " sample pairs have no omic in common."
+    )
+    
+  }
+  
+  return(NULL)
+}

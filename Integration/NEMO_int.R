@@ -229,7 +229,7 @@ if (!gt.clust_name %in% colnames(data$metadata)) {
     stop("Ground-truth clustering variable not found in metadata: ", gt.clust_name)
 }
 
-# Check percentage of missing samples
+# Check percentage of missing samples and pair-wise overlap between omics
 if(!only_common_samples){
     
     missing_omics_summary <- warn_missing_omics_samples(
@@ -242,6 +242,11 @@ if(!only_common_samples){
         missing_omics_summary,
         file = "missing_samples_per_omic_NEMO.csv",
         row.names = FALSE
+    )
+    
+   check_nemo_pairwise_overlap(
+        data_list = data$data,
+        metadata = metadata_unified
     )
     
 }
