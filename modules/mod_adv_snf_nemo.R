@@ -44,7 +44,7 @@ advSnfNemoUI <- function(id) {
     fluidRow(
       column(3,
         .adv_param_block("N° neighbors",
-          numericInput(ns("nemo_neighbors"), NULL, value = 10, min = 2, step = 1, width = "100%")
+          numericInput(ns("nemo_neighbors"), NULL, value = 5, min = 2, step = 1, width = "100%")
         )
       ),
       column(3,
@@ -120,10 +120,9 @@ advSnfNemoServer <- function(id, metadata_df) {
       df <- metadata_df()
       if (!is.null(df)) {
         cols     <- colnames(df)
-        num_cols <- cols[sapply(df, is.numeric)]
-        cat_cols <- cols[!sapply(df, is.numeric)]
-        updateSelectInput(session, "snf_enrich_cols",      choices = num_cols, selected = NULL)
-        updateSelectInput(session, "snf_surv_cols",      choices = cat_cols, selected = NULL)
+        
+        updateSelectInput(session, "snf_enrich_cols", choices = cols, selected = NULL)
+        updateSelectInput(session, "snf_surv_cols", choices = cols, selected = NULL)
         updateSelectInput(session, "snf_condition_col", choices = cols,     selected = "CONDITION")
       }
     })
