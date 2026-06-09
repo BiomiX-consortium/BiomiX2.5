@@ -66,7 +66,7 @@ advMetabolomicsUI <- function(id) {
                .adv_param_block("Metabolite annotation column",
                                 selectInput(ns("annot_compound_col"), NULL,
                                             choices  = c("compound_name", "HMDB", "KEGG"),
-                                            selected = "compound_name", width = "100%")
+                                            selected = "HMDB", width = "100%")
                )
         )
       )
@@ -92,20 +92,6 @@ advMetabolomicsUI <- function(id) {
                .adv_param_block("M/Z tolerance (ppm)",
                                 numericInput(ns("ms1_ppm"), NULL,
                                              value = 15, min = 1, max = 100, step = 1, width = "100%")
-               )
-        ),
-        column(3,
-               .adv_param_block("Chromatography column",
-                                selectInput(ns("ms1_col_type"), NULL,
-                                            choices  = c("rp", "hilic"),
-                                            selected = "rp", width = "100%")
-               )
-        ),
-        column(3,
-               .adv_param_block("Input index",
-                                selectInput(ns("ms1_input_idx"), NULL,
-                                            choices  = c("No", paste0(1:6, "\u00b0 Input")),
-                                            selected = "No", width = "100%")
                )
         )
       ),
@@ -157,6 +143,13 @@ advMetabolomicsUI <- function(id) {
                                     uiOutput(ns("ms1_annot_file_label"))
                                 )
                )
+        ),
+        column(3,
+               .adv_param_block("Input index",
+                                selectInput(ns("ms1_input_idx"), NULL,
+                                            choices  = c("No", paste0(1:6, "\u00b0 Input")),
+                                            selected = "No", width = "100%")
+               )
         )
       )
     ),
@@ -184,13 +177,23 @@ advMetabolomicsUI <- function(id) {
         # MS2 directory + ion mode
         .adv_section_header("MS2 raw files directory (.mzML)"),
         fluidRow(
-          column(7,
-                 .adv_param_block("Folder containing .mzML files",
-                                  div(style = "display:flex; gap:10px; align-items:center;",
-                                      shinyDirButton(ns("ms2_dir_btn"), "Browse folder...",
-                                                     "Select .mzML folder", class = "btn-browse-sm"),
-                                      uiOutput(ns("ms2_dir_label"))
-                                  )
+          column(3,
+                 .adv_param_block("M/Z tolerance MS2 (ppm)",
+                                  numericInput(ns("ms2_ppm"), NULL,
+                                               value = 25, min = 1, max = 100, step = 1, width = "100%")
+                 )
+          ),
+          column(3,
+                 .adv_param_block("RT match MS1-MS2 (sec)",
+                                  numericInput(ns("ms2_rt"), NULL,
+                                               value = 10, min = 1, max = 100, step = 1, width = "100%")
+                 )
+          ),
+          column(3,
+                 .adv_param_block("Chromatography column",
+                                  selectInput(ns("ms2_col_type"), NULL,
+                                              choices  = c("rp", "hilic"),
+                                              selected = "rp", width = "100%")
                  )
           ),
           column(3,
@@ -198,12 +201,6 @@ advMetabolomicsUI <- function(id) {
                                   selectInput(ns("ms2_ion_mode"), NULL,
                                               choices  = c("positive", "negative"),
                                               selected = "positive", width = "100%")
-                 )
-          ),
-          column(2,
-                 .adv_param_block("M/Z tolerance MS2 (ppm)",
-                                  numericInput(ns("ms2_ppm"), NULL,
-                                               value = 25, min = 1, max = 100, step = 1, width = "100%")
                  )
           )
         ),
@@ -285,13 +282,22 @@ advMetabolomicsUI <- function(id) {
                                               selected = "No", width = "100%")
                  )
           ),
-          column(5,
+          column(3,
                  .adv_param_block("MS2 annotation file (optional)",
                                   div(style = "display:flex; gap:10px; align-items:center;",
                                       shinyFilesButton(ns("ms2_annot_file_btn"), "Browse...",
                                                        "Select MS2 annotation file", multiple = FALSE,
                                                        class = "btn-browse-sm"),
                                       uiOutput(ns("ms2_annot_file_label"))
+                                  )
+                 )
+          ),
+          column(3,
+                 .adv_param_block("Folder containing .mzML files",
+                                  div(style = "display:flex; gap:10px; align-items:center;",
+                                      shinyDirButton(ns("ms2_dir_btn"), "Browse folder...",
+                                                     "Select .mzML folder", class = "btn-browse-sm"),
+                                      uiOutput(ns("ms2_dir_label"))
                                   )
                  )
           )
@@ -436,16 +442,16 @@ advMetabolomicsServer <- function(id, roots) {
         "kegg"      = isTRUE(input$ms2_ms1_kegg)
       )
       
+      
       list(
         annot_mode = mode,
         
         # Annotated mode — only the annotation column name is needed
-        annot_compound_col = input$annot_compound_col %||% "compound_name",
+        annot_compound_col = input$annot_compound_col %||% "HMDB",
         
         # MS1
         ms1_ion_mode  = input$ms1_ion_mode  %||% "positive",
         ms1_ppm       = input$ms1_ppm       %||% 15L,
-        ms1_col_type  = input$ms1_col_type  %||% "rp",
         ms1_input_idx = input$ms1_input_idx %||% "No",
         ms1_pos       = ms1_pos,
         ms1_neg       = ms1_neg,
@@ -456,11 +462,19 @@ advMetabolomicsServer <- function(id, roots) {
         ms2_dir        = ms2_dir(),
         ms2_ion_mode   = input$ms2_ion_mode   %||% "positive",
         ms2_ppm        = input$ms2_ppm        %||% 25L,
+        ms2_rt         = input$ms2_rt        %||% 10L,
         ms2_pos        = ms2_pos,
         ms2_neg        = ms2_neg,
+        ms2_col_type   = input$ms2_col_type  %||% "rp", 
         ms2_db_hmdb    = input$ms2_db_hmdb    %||% "1 (priority)",
         ms2_db_mona    = input$ms2_db_mona    %||% "2 (priority)",
         ms2_db_massbank= input$ms2_db_massbank%||% "3 (priority)",
+        ms2_ms1_db_priority = paste(
+          input$ms2_db_hmdb     %||% "1 (priority)",
+          input$ms2_db_mona     %||% "2 (priority)",
+          input$ms2_db_massbank %||% "3 (priority)",
+          sep = "/"
+        ),
         ms2_ms1_db     = ms2_ms1_db,
         ms2_ms1_ppm    = input$ms2_ms1_ppm    %||% 15L,
         ms2_annot_idx  = input$ms2_annot_idx  %||% "No",

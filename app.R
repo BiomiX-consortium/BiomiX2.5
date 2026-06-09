@@ -509,7 +509,7 @@ server <- function(input, output, session) {
         ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX = met$ms1_input_idx,
         ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES       = met$ms1_annot_file,
         ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY          = met$ms2_dir,
-        ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = mf$clinic_file,
+        ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = mf$clinic_file_numerical,
         ADVANCED_OPTION_CLUSTERING_OPTIONS                  = ag$clust_distance,
         ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY_2  = as.character(mf$biblio_top_contrib),
         ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2       = met$ms2_pos,
@@ -519,17 +519,91 @@ server <- function(input, output, session) {
         ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_4       = met$ms2_ms1_db,
         ADVANCED_OPTION_SNF_OPTIONS                         = sn$snf_neighbors,
         ADVANCED_OPTION_NEMO_OPTIONS                        = as.character(sn$nemo_neighbors),
-        ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES          = sn$snf_cat_cols,
-        ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS            = sn$snf_var_heatmap,
+        ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES          = sn$snf_enrich_cols,
+        ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS            = sn$snf_cluster_range,
         ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = mf$diablo_design_file,
         ADVANCED_OPTION_DIABLO_OPTIONS                      = mf$diablo_feature_sel,
         ADVANCED_OPTION_MINTTEA_OPTIONS                     = as.character(mt$n_repeats),
         ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character(mt$keep_x)
       ),
       # Row 2: minimum/alternative thresholds (fixed constants from global.R)
-      COMMANDS_ADVANCED_ROW2,
+      #COMMANDS_ADVANCED_ROW2,
+      list(
+        ADVANCED_OPTION_TRASCRIPTOMICS                      = as.character(ag$tx_padj),
+        ADVANCED_OPTION_SUBGROUPING                         = as.character(ag$sub_zscore1),
+        ADVANCED_OPTION_METABOLOMICS                        = ag$met_padj,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1         = met$ms1_input_idx,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1_2       = met$ms1_neg,
+        ADVANCED_OPTION_METHYLOMICS                         = as.character(ag$meth_padj),
+        ADVANCED_OPTION_MOFA                                = mf$mofa_convergence,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2         = as.character(met$ms2_rt),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL     = met$annot_compound_col,
+        ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY    = mf$biblio_n_articles,
+        ADVANCED_OPTION_MOFA_INTERPRETATION_PATHWAY         = as.character(mf$pathway_n),
+        ADVANCED_OPTION_MOFA_INTERPRETATION_CLINICAL        = mf$clinical_binary,
+        ADVANCED_OPTION_METADATA_FILTERING_1                = fil[[1]]$data_type,
+        ADVANCED_OPTION_METADATA_FILTERING_2                = fil[[2]]$data_type,
+        ADVANCED_OPTION_METADATA_FILTERING_3                = fil[[3]]$data_type,
+        ADVANCED_OPTION_METADATA_FILTERING_4                = fil[[4]]$data_type,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES       = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY          = as.character("X"),
+        ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = as.character("X"),
+        ADVANCED_OPTION_CLUSTERING_OPTIONS                  = ag$clust_method,
+        ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY_2  = as.character(mf$biblio_n_keywords),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2       = met$ms2_neg,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3       = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2   = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_4       = met$ms2_ms1_ppm, #Tolerance MS1-MS2 peak matching
+        ADVANCED_OPTION_SNF_OPTIONS                         = sn$snf_variance,
+        ADVANCED_OPTION_NEMO_OPTIONS                        = as.character(sn$apply_scaling_SNF),
+        ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES          = sn$snf_surv_cols,
+        ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS            = sn$snf_var_heatmap,
+        ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = as.character("X"),
+        ADVANCED_OPTION_DIABLO_OPTIONS                      = mf$diablo_n_iter,
+        ADVANCED_OPTION_MINTTEA_OPTIONS                     = as.character(mt$n_folds),
+        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character(mt$design_val)
+      ),
       # Row 3: maximum values / extra options (fixed constants from global.R)
-      COMMANDS_ADVANCED_ROW3
+      #COMMANDS_ADVANCED_ROW3
+      list(
+        ADVANCED_OPTION_TRASCRIPTOMICS                      = as.character(ag$tx_panel),
+        ADVANCED_OPTION_SUBGROUPING                         = as.character(ag$sub_heatmap),
+        ADVANCED_OPTION_METABOLOMICS                        = ag$cpu_threads,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1         = met$ms1_ppm,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1_2       = met$ms1_db,
+        ADVANCED_OPTION_METHYLOMICS                         = as.character(ag$meth_array),
+        ADVANCED_OPTION_MOFA                                = mf$mofa_threshold,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2         = as.character(met$ms2_ms1_db_priority),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL     = as.character("X"),
+        ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY    = ag$mofa_features,
+        ADVANCED_OPTION_MOFA_INTERPRETATION_PATHWAY         = as.character("X"),
+        ADVANCED_OPTION_MOFA_INTERPRETATION_CLINICAL        = mf$clinic_file,
+        ADVANCED_OPTION_METADATA_FILTERING_1                = fil[[1]]$threshold,
+        ADVANCED_OPTION_METADATA_FILTERING_2                = fil[[2]]$threshold,
+        ADVANCED_OPTION_METADATA_FILTERING_3                = fil[[3]]$threshold,
+        ADVANCED_OPTION_METADATA_FILTERING_4                = fil[[4]]$threshold,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES       = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY          = as.character("X"),
+        ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = as.character("X"),
+        ADVANCED_OPTION_CLUSTERING_OPTIONS                  = ag$sub_heatmap,
+        ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY_2  = as.character(mf$biblio_top_contrib),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2       = met$ms2_col_type,
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3       = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2   = as.character("X"),
+        ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_4       = as.character("X"),
+        ADVANCED_OPTION_SNF_OPTIONS                         = sn$snf_iterations,
+        ADVANCED_OPTION_NEMO_OPTIONS                        = sn$only_common_samples,
+        ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES          = sn$snf_condition_col,
+        ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS            = sn$snf_max_features,
+        ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = as.character("X"),
+        ADVANCED_OPTION_DIABLO_OPTIONS                      = as.character("X"),
+        ADVANCED_OPTION_MINTTEA_OPTIONS                     = as.character(mt$edge_threshold),
+        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character("X")
+      )
     )
     
     list(
@@ -690,6 +764,6 @@ server <- function(input, output, session) {
 # =============================================================================
 # LAUNCH
 # =============================================================================
-
+print("RUNNING")
 shinyApp(ui = ui, server = server)
 

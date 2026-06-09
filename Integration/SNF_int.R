@@ -37,8 +37,8 @@ library("readxl");
 
 # # #MANUAL INPUT
 # args = as.list(c("BLymphocytes","SJS"))
-# args[2] <-"CTRL"
-# args[1] <-"RA"
+# args[1] <-"mutated"
+# args[2] <-"unmutated"
 # args[3] <- "C:/Users/crist/Desktop/BiomiX2.5"
 # 
 # directory <-args[3]
@@ -50,14 +50,25 @@ library("readxl");
 # args[2] <-"unmutated"
 # directory="~/Documents/biomix_project/BiomiX2.5"
 
+#Loading Json file commands
+directory <- unlist(args[[3]])
+setwd(directory)
+library(jsonlite)
+library(tidyverse)
+combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+
+
 int_method <- "SNF"
 
 MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
 myList <- list()
 
-COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
-COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
+#combined_json file loaded from the BiomiX_BETA.r script (master script) 
+#and loading the COMBINED_COMMANDS.json file (master commands).
+
+COMMAND <- combined_json[["COMMANDS"]]
+COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
 
 #Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
 Max_features_SNF <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[3])
@@ -67,6 +78,9 @@ sigma <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[2]) # variance 
 t <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[3]) # number of iterations for SNF
 nc <- c(2:as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[1])) # Max number of cluster to test
 
+#To be included in the interface:
+apply_scaling_SNF = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
+
 if (nc[length(nc)] < 2) {
     stop("Maximum number of clusters must be at least 2.")
 }
@@ -75,7 +89,7 @@ top_feat <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS
 # Variable of interest for enrichment and survival analysis
 enrich_vars <- trimws(strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[1]), "/")[[1]])
 surv_vars <- trimws(strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[2]), "/")[[1]])
-DIR_METADATA <- readLines(paste(directory,"directory.txt",sep="/"))
+DIR_METADATA <- combined_json[["DIRECTORY_INFO"]][["METADATA_DIR"]]
 
 # Ground truth clustering name (if available, otherwise NULL)
 gt.clust_name <- trimws(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[3]))
@@ -83,8 +97,8 @@ gt.clust_name <- trimws(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_M
 # MANUAL INPUT JESS
 # DIR_METADATA <- "~/Documents/biomix_project/BiomiX2.5/Metadata/EGAS00001001746_metadata_CLL.tsv"
 # COMMAND$DATA_TYPE <- c("Transcriptomics", "Methylomics", "Undefined", "Undefined", "Undefined", "Undefined", "X")
-# COMMAND$INTEGRATION <- c("YES","YES", "NO", "NO","NO","NO", "NO") #CLL (transcriptomics + methylomics)
-# COMMAND$LABEL <- c("RNA",  "METHY", NA, NA, NA, NA, NA)
+# COMMAND$INTEGRATION <- c("YES","YES", "NO", "NO","NO","NO") #CLL (transcriptomics + methylomics)
+# COMMAND$LABEL <- c("RNA",  "Methylomics", NA, NA, NA, NA)
 
 directory2 <- paste(directory,"/Integration",sep="")
 
@@ -105,7 +119,6 @@ setwd(directory2)
 
 # Load functions----
 source("PSN_utils.R");
-source("Diablo_utils.R");
 # # Collect hyperparameters for the analysis (variables and values used defined)----
 # int_method = "SNF" # integration method (can be "SNF" or "NEMO")
 # 
@@ -115,16 +128,16 @@ source("Diablo_utils.R");
 # 
 # # Variable of interest for enrichment and survival analysis
 # enrich_vars <- c("GENDER", "AGE")
-# surv_vars <- c("OS.time", "OS.event", "DFS.time", "DFS.event") 
+# surv_vars <- c("OS.time", "OS.event", "DFS.time", "DFS.event")
 # 
 # # Ground truth clustering name (if available, otherwise NULL)
 # gt.clust_name <- "CONDITION"
 # 
 # # Range of clusters to test
-# nc=2:8 
+# nc=2:8
 # 
 # # Top features to plot in heatmap
-# top_feat = 20 
+# top_feat = 20
 
 # MANUAL INPUT JESS
 # directory="~/Documents/biomix_project/BiomiX2.5"
@@ -207,7 +220,6 @@ setwd(directory2)
 names(myList) <- names_X
 
 
-apply_scaling_SNF = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
 # Prepare data for SNF----
 # Feature selection used only to test the code, not necessary in final script
 data <- snf_nemo.preprocess(myList, METADATA, 
