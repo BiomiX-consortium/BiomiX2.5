@@ -66,96 +66,13 @@ INPUT_INDICES <- paste0("input", 1:6)
 EMPTY_VALUE <- "X"
 
 
-# -----------------------------------------------------------------------------
-# COMMANDS_ADVANCED fixed rows 2 and 3
-#
-# The COMMANDS_ADVANCED array always contains exactly 3 rows:
-#   Row 1 -> user-configured values (built dynamically in app.R)
-#   Row 2 -> minimum/alternative thresholds (fixed, read by the pipeline)
-#   Row 3 -> maximum values / extra options (fixed, read by the pipeline)
-#
-# Rows 2 and 3 are constants — they never change based on user input.
-# They are defined here so the pipeline always finds the full 3-row structure.
-# -----------------------------------------------------------------------------
-
-COMMANDS_ADVANCED_ROW2 <- list(
-  ADVANCED_OPTION_TRASCRIPTOMICS                      = "0.05",
-  ADVANCED_OPTION_SUBGROUPING                         = "10",
-  ADVANCED_OPTION_METABOLOMICS                        = 0.05,
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1         = "NO",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1_2       = NULL,
-  ADVANCED_OPTION_METHYLOMICS                         = "0.05",
-  ADVANCED_OPTION_MOFA                                = "fast",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2         = "10",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL     = "HMDB",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY    = "300",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_PATHWAY         = "10",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_CLINICAL        = "NO",
-  ADVANCED_OPTION_METADATA_FILTERING_1                = "Numerical",
-  ADVANCED_OPTION_METADATA_FILTERING_2                = "Numerical",
-  ADVANCED_OPTION_METADATA_FILTERING_3                = "Numerical",
-  ADVANCED_OPTION_METADATA_FILTERING_4                = "Numerical",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX = "No",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES       = "X",
-  ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY          = "X",
-  ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = "X",
-  ADVANCED_OPTION_CLUSTERING_OPTIONS                  = "ward.D2",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY_2  = "10",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2       = NULL,
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3       = "X",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX = "No",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2   = "X",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_4       = "15",
-  ADVANCED_OPTION_SNF_OPTIONS                         = 0.5,
-  ADVANCED_OPTION_NEMO_OPTIONS                        = "0.5",
-  ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES          = "X",
-  ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS            = 20,
-  ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = "X",
-  ADVANCED_OPTION_DIABLO_OPTIONS                      = "99"
-)
-
-COMMANDS_ADVANCED_ROW3 <- list(
-  ADVANCED_OPTION_TRASCRIPTOMICS                      = "X",
-  ADVANCED_OPTION_SUBGROUPING                         = "YES",
-  ADVANCED_OPTION_METABOLOMICS                        = 3,
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1         = "15",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1_2       = "hmdb/lipidmaps/metlin/kegg",
-  ADVANCED_OPTION_METHYLOMICS                         = "450K",
-  ADVANCED_OPTION_MOFA                                = "0.5",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2         = "1 (priority)/2 (priority)/3 (priority)",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL     = "X",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY    = "5000",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_PATHWAY         = "X",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_CLINICAL        = "X",
-  ADVANCED_OPTION_METADATA_FILTERING_1                = NA_character_,
-  ADVANCED_OPTION_METADATA_FILTERING_2                = NA_character_,
-  ADVANCED_OPTION_METADATA_FILTERING_3                = NA_character_,
-  ADVANCED_OPTION_METADATA_FILTERING_4                = NA_character_,
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX = "No",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES       = "X",
-  ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY          = "X",
-  ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = "X",
-  ADVANCED_OPTION_CLUSTERING_OPTIONS                  = "20",
-  ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY_2  = "X",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2       = "rp",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3       = "X",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX = "No",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2   = "X",
-  ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_4       = "X",
-  ADVANCED_OPTION_SNF_OPTIONS                         = 20,
-  ADVANCED_OPTION_NEMO_OPTIONS                        = "X",
-  ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES          = "CONDITION",
-  ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS            = 20,
-  ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = "X",
-  ADVANCED_OPTION_DIABLO_OPTIONS                      = "X"
-)
 # Supports .xlsx, .xls, .tsv, .csv, .txt
 # Returns a dataframe or throws a user-readable error.
 # -----------------------------------------------------------------------------
 
 read_metadata <- function(file_path) {
   ext <- tolower(tools::file_ext(file_path))
-  
+
   df <- tryCatch({
     if (ext %in% c("xlsx", "xls")) {
       read_excel(file_path)
@@ -165,17 +82,17 @@ read_metadata <- function(file_path) {
   }, error = function(e) {
     stop(paste("Error reading metadata file:", e$message))
   })
-  
+
   # CONDITION column is mandatory
   if (!"CONDITION" %in% colnames(df)) {
     stop("The metadata file does not contain the required 'CONDITION' column.")
   }
-  
+
   # Warn if CONDITION is numeric
   if (is.numeric(df$CONDITION)) {
     warning("The CONDITION column is numeric. Conditions should be character strings (e.g. 'Healthy', 'Disease').")
   }
-  
+
   df
 }
 
@@ -203,7 +120,7 @@ build_commands <- function(inputs_data) {
       ANALYSIS    = d$analysis,
       DATA_TYPE   = d$data_type,
       INTEGRATION = d$integration,
-      LABEL       = if (nchar(trimws(d$label)) == 0) NULL else d$label,
+      LABEL       = if (nchar(trimws(d$label)) == 0) NA_character_ else d$label,
       SELECTION   = d$selection,
       DIRECTORIES = if (nchar(trimws(d$path)) == 0) EMPTY_VALUE else d$path,
       PREVIEW     = d$preview
@@ -219,8 +136,17 @@ build_commands <- function(inputs_data) {
 # -----------------------------------------------------------------------------
 
 build_commands_mofa <- function(integration_data) {
+
+  # Convert method name to the format expected by BiomiX_BETA.r
+  # e.g. "MOFA" -> "MOFA_INTEGRATION", "MintTea" -> "MINTEA_INTEGRATION"
+  integration_type <- if (integration_data$integration_type == "NO_INTEGRATION") {
+    "NO_INTEGRATION"
+  } else {
+    paste0(toupper(integration_data$integration_type), "_INTEGRATION")
+  }
+
   list(
-    list(nms = "Integration_type",              V2 = integration_data$integration_type),
+    list(nms = "Integration_type",              V2 = integration_type),
     list(nms = "Data_Integration",              V2 = integration_data$data_integration),
     list(nms = "Number_of_factors_to_calculate",V2 = as.character(integration_data$n_factors)),
     list(nms = "Factor_to_explore",             V2 = as.character(integration_data$factor_explore)),
@@ -265,11 +191,11 @@ write_combined_json <- function(commands,
       OUTPUT_DIR   = output_dir
     )
   )
-  
+
   write(
     jsonlite::toJSON(combined, pretty = TRUE, auto_unbox = TRUE, na = "null"),
     out_path
   )
-  
+
   invisible(out_path)
 }
