@@ -72,9 +72,8 @@ if (nc[length(nc)] < 2) {
     stop("Maximum number of clusters must be at least 2.")
 }
 
-#To be included in the interface:
-apply_scaling_SNF = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
-only_common_samples = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
+apply_scaling_SNF = as.logical(COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS[2]) # JG: it could be set as "TRUE"/"FALSE"
+only_common_samples = as.logical(COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS[3]) # JG: it could be set as "TRUE"/"FALSE"
 
 
 top_feat <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[2]) #Number variable in the heatmap to visualize

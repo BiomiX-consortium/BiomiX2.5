@@ -79,7 +79,7 @@ t <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[3]) # number of ite
 nc <- c(2:as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[1])) # Max number of cluster to test
 
 #To be included in the interface:
-apply_scaling_SNF = as.logical(TRUE) # JG: it could be set as "TRUE"/"FALSE"
+apply_scaling_SNF = as.logical(COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS[2]) # JG: it could be set as "TRUE"/"FALSE"
 
 if (nc[length(nc)] < 2) {
     stop("Maximum number of clusters must be at least 2.")
