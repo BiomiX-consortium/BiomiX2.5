@@ -470,6 +470,8 @@ if (!is.null(feat_imp)) {
 dir.create("enrichment_survival_analysis", showWarnings = FALSE)
 
 valid_surv_vars <- surv_vars[surv_vars != "X"]
+# Keep only the variables with the following format .time / .event
+valid_surv_vars <- valid_surv_vars[grepl("\\.time$|\\.event$", valid_surv_vars)]
 
 if (length(valid_surv_vars) > 0 || length(valid_enrich_vars) > 0) {
   

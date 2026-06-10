@@ -68,7 +68,7 @@ advSnfNemoUI <- function(id) {
         )
       ),
       column(4,
-        .adv_param_block("Columns for Survival variable test columns",
+        .adv_param_block("Columns for Time (add .time) and survival column (add .event)",
           selectInput(ns("snf_surv_cols"), NULL,
                       choices = NULL, multiple = TRUE, width = "100%")
         )
