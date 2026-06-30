@@ -575,7 +575,8 @@ run_metpath_pipeline_annotated <- function(total, COMMAND_ADVANCED, Cell_type, a
   
   if (nrow(query_id) != 0) {
     if (COMMAND_ADVANCED[2, 9] == "HMDB") {
-      colnames(query_id)[1] <- "HMDB"
+      colnames(query_id)[which(colnames(query_id) == "NAME")] <- "HMDB"
+      
       
       dir.create(path = paste0(directory2, "/Pathway_analysis/", "HMDB_", Cell_type, "_", args[1], "_vs_", args[2]),
                  showWarnings = TRUE, recursive = TRUE, mode = "0777")
@@ -608,7 +609,7 @@ run_metpath_pipeline_annotated <- function(total, COMMAND_ADVANCED, Cell_type, a
         print(x)
         
         write.table(result@result,
-                    paste0(directory2, "/Pathway_analysis/", "HMDB_", Cell_type, "_", args[1], "_vs_", args[2], "/HMDB_table_results"),
+                    paste0(directory2, "/Pathway_analysis/", "HMDB_", Cell_type, "_", args[1], "_vs_", args[2], "/HMDB_table_results.tsv"),
                     quote = FALSE, row.names = FALSE, sep = "\t")
         dev.off()
         gc()
@@ -616,7 +617,8 @@ run_metpath_pipeline_annotated <- function(total, COMMAND_ADVANCED, Cell_type, a
     }
     
     if (COMMAND_ADVANCED[2, 9] == "KEGG") {
-      colnames(query_id)[1] <- "KEGG"
+      #colnames(query_id)[1] <- "KEGG"
+      colnames(query_id)[which(colnames(query_id) == "kegg_id")] <- "KEGG"
       pathway_class_KEGG <- metpath::pathway_class(kegg_hsa_pathway)
       
       dir.create(path = paste0(directory2, "/Pathway_analysis/", "KEGG_", Cell_type, "_", args[1], "_vs_", args[2]),
@@ -684,7 +686,7 @@ if (COMMAND_ADVANCED[2,9] == "HMDB" ){
   write.table(x= query_id$HMDB[!is.na(query_id$HMDB)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 if (COMMAND_ADVANCED[2,9] == "KEGG" ){
   write.table(x= query_id$Kegg[!is.na(query_id$Kegg )] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-if (COMMAND_ADVANCED[2,9] == "compound_name" ){
+if (COMMAND_ADVANCED[2,9] == "Name" ){
   write.table(x= query_id$Name[!is.na(query_id$Name )] , file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 
 
@@ -696,7 +698,7 @@ if (COMMAND_ADVANCED[2,9] == "HMDB" ){
   write.table(x= query_id$HMDB[!is.na(query_id$HMDB)] , file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 if (COMMAND_ADVANCED[2,9] == "KEGG" ){
   write.table(x= query_id$Kegg[!is.na(query_id$Kegg )] , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-if (COMMAND_ADVANCED[2,9] == "compound_name" ){
+if (COMMAND_ADVANCED[2,9] == "Name" ){
   write.table(x= query_id$Name[!is.na(query_id$Name )] , file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= ",", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 
 
@@ -704,13 +706,16 @@ if (COMMAND_ADVANCED[2,9] == "compound_name" ){
 dir.create(path = paste(directory2,"/MetaboAnalyst/", "Joint_Pathway_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 setwd(paste(directory2,"/MetaboAnalyst/", "Joint_Pathway_Analysis", sep =""))
 
-query_id_select <- query_id[,c(1,2)]
+#query_id_select <- query_id[,c(1,2)]
 
 if (COMMAND_ADVANCED[2,9] == "HMDB" ){
+  query_id_select <- query_id[, c("HMDB", "log2FC")]
   write.table(x= query_id_select, file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 if (COMMAND_ADVANCED[2,9] == "KEGG" ){
+  query_id_select <- query_id[, c("KEGG", "log2FC")]
   write.table(x= query_id_select , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
-if (COMMAND_ADVANCED[2,9] == "compound_name" ){
+if (COMMAND_ADVANCED[2,9] == "Name" ){
+  query_id_select <- query_id[, c("KEGG", "log2FC")]
   write.table(x= query_id_select, file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 
 
@@ -767,14 +772,17 @@ if (length(files) != 0){
 dir.create(path = paste(directory2,"/MetaboAnalyst/", "Network_Analysis", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 setwd(paste(directory2,"/MetaboAnalyst/", "Network_Analysis", sep =""))
 
-query_id_select <- query_id[,c(1,2)]
+#query_id_select <- query_id[,c(1,2)]
 
 if (COMMAND_ADVANCED[2,9] == "HMDB" ){
+  query_id_select <- query_id[, c("HMDB", "log2FC")]
   write.table(x= query_id_select, file= paste("HMDB_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 if (COMMAND_ADVANCED[2,9] == "KEGG" ){
+  query_id_select <- query_id[, c("KEGG", "log2FC")]
   write.table(x= query_id_select , file= paste("KEGG_ID_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)
 } #Sometimes does work, is not able to write the file, exclusively in the network section (?)
-if (COMMAND_ADVANCED[2,9] == "compound_name" ){
+if (COMMAND_ADVANCED[2,9] == "Name" ){
+  query_id_select <- query_id[, c("Name", "log2FC")]
   write.table(x= query_id_select, file= paste("Compound_names_",Cell_type,"_",args[1],"_vs_",args[2],".tsv",sep="")  ,sep= "\t", row.names = FALSE, col.names = FALSE,  quote = FALSE)}
 
 
