@@ -10,16 +10,16 @@
 # 
 # library(vroom)
 # args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"Sjogrens"
-# args[2] <-"Healthy"
+# args[1] <-"PTB"
+# args[2] <-"HC"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 # 
 # directory <- args[[3]]
 # iterations = 1
 # selection_samples = "NO"
-# Cell_type = "Bnaive_neg"
+# Cell_type = "TEST"
 # i = 1
-# ANNOTATION = "MS2"
+# ANNOTATION = "MS1"
 # DIR_METADATA <- readLines("C:/Users/crist/Desktop/BiomiX2.5/directory.txt")
 # STATISTICS = "YES"
 # renv::load(paste(directory,"_INSTALL",sep="/"))
@@ -427,11 +427,11 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
                 Negative_adduct <- strsplit(Negative_adduct, "/")
                 Negative_adduct <- Negative_adduct[[1]]
                 
-                if (any(is.na(Negative_adduct))){
+                if (any(Negative_adduct == "X")){
                         ducts <- as.list(Positive_adduct)
                         #ducts <- Positive_adduct %>% str_c(collapse = ",")
                         #ducts <- paste("[",ducts,"]",sep = "")
-                } else if (any(is.na(Positive_adduct))){
+                } else if (any(Positive_adduct == "X")){
                         ducts <- as.list(Negative_adduct)
                         #ducts <- Positive_adduct  %>% str_c(collapse = ",") 
                         #ducts <- paste("[",ducts,"]",sep = "")

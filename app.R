@@ -548,7 +548,7 @@ server <- function(input, output, session) {
         ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_INDEX = as.character("X"),
         ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES       = as.character("X"),
         ADVANCED_OPTION_METABOLOMICS_MS2_DIRECTORY          = as.character("X"),
-        ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = as.character("X"),
+        ADVANCED_OPTION_CLINIC_DATA_DIRECTORY               = mf$clinic_file_binary,
         ADVANCED_OPTION_CLUSTERING_OPTIONS                  = ag$clust_method,
         ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY_2  = as.character(mf$biblio_n_keywords),
         ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2       = met$ms2_neg,
