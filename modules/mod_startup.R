@@ -6,6 +6,8 @@
 #   - Interactive metadata file selection via shinyFiles
 #   - Read the CONDITION column and populate GROUP_1 / GROUP_2 dropdowns
 #   - Interactive output folder selection via shinyDirButton
+#     (skipped when running inside Docker: output is fixed to /shared,
+#      which the user is expected to bind-mount at `docker run` time)
 #
 # Input arguments: roots = named vector of accessible root directories (from app.R)
 # Returned value:  startup_data() -> reactive list with:
@@ -18,7 +20,15 @@
 # =============================================================================
 
 library(shinyFiles)
-
+#Retrieve the environmental variable for docker.
+#ENV BIOMIX_RUNNING_IN_DOCKER=true Da aggiungere al docker file!
+is_in_docker <- as.logical(Sys.getenv("BIOMIX_RUNNING_IN_DOCKER", unset = FALSE))
+print(is_in_docker)
+#is_in_docker <- TRUE
+# Fixed path used inside the container when running in Docker. The user is
+# responsible for bind-mounting their own host folder to this exact path,
+# e.g. `docker run -v C:\Users\me\results:/shared ...`
+DOCKER_SHARED_PATH <- "/shared"
 
 # -----------------------------------------------------------------------------
 # UI
@@ -91,24 +101,39 @@ startupUI <- function(id) {
       
       hr(class = "startup-divider"),
       
-      # Section 3: Output folder selection
-      div(
-        class = "startup-section",
-        div(class = "section-label", "3. Output folder"),
-        div(class = "section-label-sub",
-            "Folder where BiomiX will save results and the JSON configuration file"),
+      # Section 3: Output folder
+      # - Local (is_in_docker == FALSE): interactive folder picker, as before.
+      # - Docker (is_in_docker == TRUE): no picker — output is fixed to
+      #   DOCKER_SHARED_PATH; we just show that path and remind the user
+      #   how to make it visible on their own machine.
+      if (!is_in_docker) {
         div(
-          style = "display: flex; align-items: center; gap: 12px;",
-          shinyDirButton(
-            id    = ns("output_dir"),
-            label = "Select folder...",
-            title = "Select the output folder",
-            icon  = icon("folder-open"),
-            class = "btn-browse"
-          ),
+          class = "startup-section",
+          div(class = "section-label", "3. Output folder"),
+          div(class = "section-label-sub",
+              "Folder where BiomiX will save results and the JSON configuration file"),
+          div(
+            style = "display: flex; align-items: center; gap: 12px;",
+            shinyDirButton(
+              id    = ns("output_dir"),
+              label = "Select folder...",
+              title = "Select the output folder",
+              icon  = icon("folder-open"),
+              class = "btn-browse"
+            ),
+            uiOutput(ns("output_status"))
+          )
+        )
+      } else {
+        div(
+          class = "startup-section",
+          div(class = "section-label", "3. Output folder"),
+          div(class = "section-label-sub",
+              "Running in Docker: results will be saved to the folder you mounted ",
+              "on your machine via -v <your-folder>:/shared"),
           uiOutput(ns("output_status"))
         )
-      )
+      }
       
     ) # end startup-card
   )
@@ -125,7 +150,9 @@ startupServer <- function(id, roots) {
     # Internal reactive state
     metadata_df   <- reactiveVal(NULL)
     metadata_path <- reactiveVal("")
-    output_dir    <- reactiveVal("")
+    # When running in Docker, the output path is fixed and known immediately —
+    # no user interaction needed. Otherwise it starts empty, as before.
+    output_dir    <- reactiveVal(if (is_in_docker) DOCKER_SHARED_PATH else "")
     
     # Connect metadata file button to the filesystem
     shinyFileChoose(
@@ -136,13 +163,27 @@ startupServer <- function(id, roots) {
       filetypes = c("xlsx", "xls", "tsv", "csv", "txt")
     )
     
-    # Connect output folder button to the filesystem
-    shinyDirChoose(
-      input   = input,
-      id      = "output_dir",
-      roots   = roots,
-      session = session
-    )
+    # Output folder picker: only relevant outside Docker. Registering
+    # shinyDirChoose/observeEvent here when the corresponding button doesn't
+    # exist in the UI (Docker case) would have no effect, so we skip it
+    # entirely for clarity.
+    if (!is_in_docker) {
+      
+      # Connect output folder button to the filesystem
+      shinyDirChoose(
+        input   = input,
+        id      = "output_dir",
+        roots   = roots,
+        session = session
+      )
+      
+      # React to output folder selection
+      observeEvent(input$output_dir, {
+        path <- parseDirPath(roots, input$output_dir)
+        if (length(path) > 0 && nchar(path) > 0)
+          output_dir(as.character(path))
+      }, ignoreNULL = TRUE, ignoreInit = TRUE)
+    }
     
     # React to metadata file selection
     observeEvent(input$metadata_file, {
@@ -167,13 +208,6 @@ startupServer <- function(id, roots) {
         updateSelectInput(session, "group2", choices = conditions,
                           selected = if (length(conditions) >= 2) conditions[2] else conditions[1])
       }
-    }, ignoreNULL = TRUE, ignoreInit = TRUE)
-    
-    # React to output folder selection
-    observeEvent(input$output_dir, {
-      path <- parseDirPath(roots, input$output_dir)
-      if (length(path) > 0 && nchar(path) > 0)
-        output_dir(as.character(path))
     }, ignoreNULL = TRUE, ignoreInit = TRUE)
     
     # Display selected metadata path
@@ -205,13 +239,16 @@ startupServer <- function(id, roots) {
             " GROUP_1 and GROUP_2 are identical — please select two different conditions.")
     })
     
-    # Feedback: selected output folder
+    # Feedback: output folder / path in use
     output$output_status <- renderUI({
       d <- output_dir()
-      if (nchar(d) == 0)
-        span(class = "file-label-empty", "No folder selected")
-      else
+      if (is_in_docker) {
         span(class = "file-label-ok", icon("folder-open"), " ", d)
+      } else if (nchar(d) == 0) {
+        span(class = "file-label-empty", "No folder selected")
+      } else {
+        span(class = "file-label-ok", icon("folder-open"), " ", d)
+      }
     })
     
     # Value returned to the parent (app.R)
