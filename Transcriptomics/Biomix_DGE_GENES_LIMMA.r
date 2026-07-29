@@ -2,31 +2,40 @@
 #ADD variables for the correction of the linear model (no N_CONFOUNDER)
 
 
+#### STANDALONE ENTRY POINT ----
+#
+# Invocation (see runner_transcriptomics in BiomiX_BETA.r):
+#   Rscript Biomix_DGE_GENES_LIMMA.r <DIRECTORY> <CELL_TYPE_LABEL> <GROUP_1> <GROUP_2> <SHARED_DIR>
 
+#### STANDALONE ENTRY POINT (only when NOT source()'d) ----
+#
+# When run standalone via Rscript (Docker mode), parse commandArgs().
+# When source()'d from BiomiX_BETA.r's loop (local/non-Docker mode),
+# Cell_type/directory/args/STATISTICS/etc. already exist in this
+# environment — skip parsing entirely and just use them, unchanged.
 
-#### INPUT PROMPT ----
-# 
-# 
-# MANUAL INPUT
-# library(vroom)
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"CTRL"
-# args[2] <-"RA"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# #
-# directory <- args[3]
-# iterations = 1
-# i=1
-# selection_samples = "NO"
-# purity_filter = "NO"
-# Cell_type = "Monocytes"
-# setwd(directory[[1]])
-# COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-# COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
-# DIR_METADATA <- readLines("directory.txt")
-# STATISTICS = "YES"
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-
+if (!exists("Cell_type")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 6) {
+    stop("Usage: Rscript Biomix_DGE_GENES_LIMMA.r <DIRECTORY> <CELL_TYPE_LABEL> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
+  }
+  
+  directory  <- cli_args[1]
+  Cell_type  <- cli_args[2]
+  args       <- c(cli_args[3], cli_args[4])
+  shared_dir <- cli_args[5]
+  iterations <- as.numeric(cli_args[6])
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  site_lib <- "/usr/local/lib/R/site-library"
+  if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+    .libPaths(c(.libPaths(), site_lib))
+  }
+  
+  setwd(directory)
+}
 
 #### DATASET REARRANGEMENT ----
 
@@ -37,10 +46,30 @@ library(dplyr)
 library(tidyverse)
 library(DESeq2)
 library(readxl)
-
 library(jsonlite)
-library(tidyverse)
-combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+
+# MICRO MODIFICA: il JSON si legge da shared_dir, non dalla directory di installazione
+print(file.path(shared_dir, "COMBINED_COMMANDS.json"))
+combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
+COMMAND <- combined_json[["COMMANDS"]]
+COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
+DIR_METADATA <- combined_json[["DIRECTORY_INFO"]][["METADATA_DIR"]]
+DIR_METADATA_output <- combined_json[["DIRECTORY_INFO"]][["OUTPUT_DIR"]]
+
+# `i` was previously received from BiomiX_BETA.r's for-loop via source().
+# Standalone, it must be recovered using Cell_type as the lookup key.
+i <- which(COMMAND$LABEL == Cell_type)
+if (length(i) == 0) {
+  stop(paste0("No row in COMMAND$LABEL matches Cell_type '", Cell_type, "'"))
+}
+i <- i[1]
+
+# This script is only ever launched for rows where ANALYSIS == "YES".
+STATISTICS <- "YES"
+selection_samples <- COMMAND$SELECTION[i]
+
+
 
 
 directory2 <- paste(directory,"/Transcriptomics/",sep="")
@@ -196,7 +225,7 @@ summary(as.factor(Metadata_Bcell$CONDITION))
 
 #STATEMENT IF DATA ARE NORMALIZED OR NOT, IT LOOKS IF NUMERS ARE FLOATS OR INTEGER
 
-results <- handle_normalization_and_export(DGE2, Metadata_Bcell, Cell_type, args, directory)
+results <- handle_normalization_and_export(DGE2, Metadata_Bcell, Cell_type, args, shared_dir)
 
 NORMALIZATION <- results$NORMALIZATION
 DGE3 <- results$DGE3
@@ -255,7 +284,8 @@ Metadata_Bcell <- generate_heatmap_signature(
           # DGE2$samples <- Metadata$ID
   }
   
-  directory2 <- file.path(directory, "Integration", "INPUT", paste0(Cell_type, "_", args[1], "_vs_", args[2]))
+  directory2 <- file.path(shared_dir, "Integration", "INPUT", paste0(Cell_type, "_", args[1], "_vs_", args[2]))
+  dir.create(directory2, recursive = TRUE, showWarnings = FALSE)
   setwd(directory2)
 
 
@@ -270,7 +300,7 @@ Metadata_Bcell <- generate_heatmap_signature(
  
 #### GENERATION MATRIX FOR DATA INTEGRATION ----
   
-  generate_mofa_input(directory, Cell_type, args, NORMALIZATION, GENE_ANNOTATION, COMMAND_ADVANCED)
+  generate_mofa_input(shared_dir, Cell_type, args, NORMALIZATION, GENE_ANNOTATION, COMMAND_ADVANCED)
   
 
 if (STATISTICS == "YES"){
@@ -312,13 +342,14 @@ for (comparison in Panel_state){
                 Metadata <- data$Metadata 
                 
                 #create directory DGE
-                dir.create(path = paste(directory,"/Transcriptomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                dir.create(path = paste(directory,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1], "_vs_", args[2],"/",args[1] ,comparison,"_vs_",args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                directory2 <- paste(directory,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1], "_vs_", args[2],"/",args[1],comparison,"_vs_",args[2], sep ="")
+                dir.create(path = paste(shared_dir,"/Transcriptomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+                dir.create(path = paste(shared_dir,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1], "_vs_", args[2],"/",args[1] ,comparison,"_vs_",args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+                directory2 <- paste(shared_dir,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1], "_vs_", args[2],"/",args[1],comparison,"_vs_",args[2], sep ="")
+                
                 setwd(directory2)
                 
                 #create directory EnrichR
-                directory_path <- file.path(directory, "Transcriptomics/OUTPUT", paste0(Cell_type, "_", args[1], "_vs_", args[2]),
+                directory_path <- file.path(shared_dir, "Transcriptomics/OUTPUT", paste0(Cell_type, "_", args[1], "_vs_", args[2]),
                                             paste0(args[1], comparison, "_vs_", args[2]), "Pathway_analysis")
                 dir.create(directory_path, recursive = TRUE, showWarnings = FALSE)
                 dir.create(file.path(directory_path, "TABLES"), showWarnings = FALSE)
@@ -330,14 +361,17 @@ for (comparison in Panel_state){
                         
         } else {
                 
-                #create directory DGE
-                dir.create(path = paste(directory,"/Transcriptomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                dir.create(path = paste(directory,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1],"_vs_", args[2],"/",args[1],"_vs_",args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                directory2 <- paste(directory,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1],"_vs_", args[2],"/",args[1], "_vs_",args[2], sep ="")
+                #create directory DGE 
+                print(shared_dir)
+          
+                dir.create(path = paste(shared_dir,"/Transcriptomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+                dir.create(path = paste(shared_dir,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1],"_vs_", args[2],"/",args[1],"_vs_",args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+                directory2 <- paste(shared_dir,"/Transcriptomics/OUTPUT/", Cell_type, "_",args[1],"_vs_", args[2],"/",args[1], "_vs_",args[2], sep ="")
+                print(directory2)
                 setwd(directory2)
                 
                 #create directory EnrichR
-                directory_path <- file.path(directory, "Transcriptomics/OUTPUT", paste0(Cell_type, "_", args[1], "_vs_", args[2]),
+                directory_path <- file.path(shared_dir, "Transcriptomics/OUTPUT", paste0(Cell_type, "_", args[1], "_vs_", args[2]),
                                             paste0(args[1], "_vs_", args[2]), "Pathway_analysis")
                 dir.create(directory_path, recursive = TRUE, showWarnings = FALSE)
                 dir.create(file.path(directory_path, "TABLES"), showWarnings = FALSE)

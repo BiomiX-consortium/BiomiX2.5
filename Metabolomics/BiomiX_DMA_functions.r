@@ -582,7 +582,7 @@ run_metpath_pipeline_annotated <- function(total, COMMAND_ADVANCED, Cell_type, a
                  showWarnings = TRUE, recursive = TRUE, mode = "0777")
       setwd(paste0(directory2, "/Pathway_analysis/", "HMDB_", Cell_type, "_", args[1], "_vs_", args[2]))
       
-      pathway_class_HMDB <- metpath::pathway_class(hmdb_pathway)
+      pathway_class_HMDB <- hmdb_pathway@pathway_class
       
       gc()
       remain_idx <- which(unlist(pathway_class_HMDB) == "Metabolic;primary_pathway")
@@ -619,7 +619,7 @@ run_metpath_pipeline_annotated <- function(total, COMMAND_ADVANCED, Cell_type, a
     if (COMMAND_ADVANCED[2, 9] == "KEGG") {
       #colnames(query_id)[1] <- "KEGG"
       colnames(query_id)[which(colnames(query_id) == "kegg_id")] <- "KEGG"
-      pathway_class_KEGG <- metpath::pathway_class(kegg_hsa_pathway)
+      pathway_class_KEGG <- kegg_hsa_pathway@pathway_class
       
       dir.create(path = paste0(directory2, "/Pathway_analysis/", "KEGG_", Cell_type, "_", args[1], "_vs_", args[2]),
                  showWarnings = TRUE, recursive = TRUE, mode = "0777")
@@ -1009,7 +1009,7 @@ build_msms_annotation <- function(directory, Cell_type, args, param, annotate_re
 
 
 # ---- Function to Generate MS2 Spectra Plots ----
-generate_ms2_spectra_plots <- function(directory, directory2, Cell_type, args, MS2_databases, annotate_result5) {
+generate_ms2_spectra_plots <- function(directory, shared_dir, directory2, Cell_type, args, MS2_databases, annotate_result5) {
   
   # Create subfolder for MS2 spectra
   dir.create(path = paste(directory2, "/MS2_SPECTRA", sep = ""), 
@@ -1053,11 +1053,11 @@ generate_ms2_spectra_plots <- function(directory, directory2, Cell_type, args, M
   }
   
   # Recreate output directory and reset working directory
-  dir.create(path = paste(directory, "/Metabolomics/OUTPUT/", sep = ""), 
+  dir.create(path = paste(shared_dir, "/Metabolomics/OUTPUT/", sep = ""), 
              showWarnings = TRUE, recursive = TRUE, mode = "0777")
-  dir.create(path = paste(directory, "/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep = ""), 
+  dir.create(path = paste(shared_dir, "/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep = ""), 
              showWarnings = TRUE, recursive = TRUE, mode = "0777")
-  directory2 <- paste(directory, "/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep = "")
+  directory2 <- paste(shared_dir, "/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep = "")
   
   setwd(directory2)
   
@@ -1445,8 +1445,8 @@ run_metpath_pipeline_MS1_MS2 <- function(total,
                showWarnings = TRUE, recursive = TRUE, mode = "0777")
     setwd(paste(directory2, "/Pathway_analysis/", "HMDB_", Cell_type, "_", args[1], "_vs_", args[2], sep = ""))
     
-    pathway_class_HMDB <- metpath::pathway_class(hmdb_pathway)
-    pathway_class_KEGG <- metpath::pathway_class(kegg_hsa_pathway)
+    pathway_class_HMDB <- hmdb_pathway@pathway_class
+    pathway_class_KEGG <- kegg_hsa_pathway@pathway_class
     
     pdf(file = paste("Pathway_analysis_HMDB_", args[1], "_", args[2], "_", Cell_type, ".pdf", sep = ""))
     

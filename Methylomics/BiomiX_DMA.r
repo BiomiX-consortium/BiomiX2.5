@@ -1,21 +1,28 @@
-#### INPUT PROMPT MANUAL (DEBUGGING) ----
-# 
-# args = as.list(c("Wholeblood","SLE"))
-# print(args)
-# 
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# 
-# directory <- args[[3]]
-# iterations = 1
-# i=1
-# selection_samples = "NO"
-# Cell_type = "METHY"
-# STATISTICS = "YES"
-# DIR_METADATA <- readLines("C:/Users/crist/Desktop/BiomiX2.5/directory.txt")
-# renv::load(paste(directory,"_INSTALL",sep="/"))
+#### STANDALONE ENTRY POINT ----
+#
+# Invocation:
+#   Rscript BiomiX_DMA.r <DIRECTORY> <CELL_TYPE_LABEL> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>
+
+if (!exists("Cell_type")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 6) {
+    stop("Usage: Rscript BiomiX_DMA.r <DIRECTORY> <CELL_TYPE_LABEL> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
+  }
+  
+  directory  <- cli_args[1]
+  Cell_type  <- cli_args[2]
+  args       <- c(cli_args[3], cli_args[4])
+  shared_dir <- cli_args[5]
+  iterations <- as.numeric(cli_args[6])
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  site_lib <- "/usr/local/lib/R/site-library"
+  if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+    .libPaths(c(.libPaths(), site_lib))
+  }
+}
 
 library(vroom)
 library(dplyr)
@@ -26,10 +33,9 @@ library(tidyverse)
 library(rjson)
 
 
-
 #### LOADING JSON FILE ----
 setwd(directory)
-combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
 
 directory2 <- paste(directory,"/Methylomics/",sep="")
 setwd(directory2)
@@ -48,11 +54,16 @@ padju <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METHYLOMICS[2])
 array <- COMMAND_ADVANCED$ADVANCED_OPTION_METHYLOMICS[3]
 n_genes_heat<-as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_CLUSTERING_OPTIONS[3])
 DIR_METADATA <- combined_json[["DIRECTORY_INFO"]][["METADATA_DIR"]]
-#Cell_type <- COMMAND$LABEL[i] #Cell_type is the label used to name saved files
-args <- combined_json[["COMMAND_LINE_ARGS"]] #Belongs to the original arguments run in the BiomiX_beta.r
-# i = iteration number from the BiomiX_beta.r Script
-# STATISTICS = "YES" # Defined in the BiomiX_beta.r (If run the statistics on the omics data)
 
+# `i` recovered from Cell_type (was inherited via source() before)
+i <- which(COMMAND$LABEL == Cell_type)
+if (length(i) == 0) {
+  stop(paste0("No row in COMMAND$LABEL matches Cell_type '", Cell_type, "'"))
+}
+i <- i[1]
+
+selection_samples <- COMMAND$SELECTION[i]
+STATISTICS <- "YES"
 
 
 
@@ -191,8 +202,8 @@ gc()
 Matrix2 <- Matrix
 Matrix2$variance <- varianze
 
-dir.create(path = paste(directory,"/Integration/INPUT/", "Methylome_",Cell_type,"_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-directory2 <- paste(directory,"/Integration/INPUT/", "Methylome_",Cell_type, "_",args[1],"_vs_", args[2], sep ="") 
+dir.create(path = paste(shared_dir,"/Integration/INPUT/", "Methylome_",Cell_type,"_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+directory2 <- paste(shared_dir,"/Integration/INPUT/", "Methylome_",Cell_type, "_",args[1],"_vs_", args[2], sep ="")
 
 setwd(directory2)
 
@@ -217,7 +228,7 @@ if (STATISTICS == "YES"){
   perform_statistical_dmp_analysis(
     Matrix = Matrix,
     Metadata_individual = Metadata_individual,
-    directory = directory,
+    directory = shared_dir,
     Cell_type = Cell_type,
     args = args,
     array = array,

@@ -9,26 +9,102 @@ cat("\n\n\n\n\n          /////////      ///    /////////    ///       ///     //
 # args[2] <-"C2"
 # args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
 
-
 old <- Sys.time() # get start time
 
 
 #Sys.sleep(5)
 print("Welcome to BiomiX toolkit")
 
+#Load information about docker
+is_in_docker <- as.logical(Sys.getenv("BIOMIX_RUNNING_IN_DOCKER", unset = FALSE))
+print(is_in_docker)
 #Sys.sleep(5)
 
 print("Information acquired, running the analysis")
 
 #Sys.sleep(5)
 
+
+
+#Master function to run the docker systems
+generateRunnerFunction <- function(dockerImage) {
+  
+  if (!is_in_docker) {
+    # --- Caso locale: nessun Docker, comportamento identico a prima ---
+    runner <- function(
+    command, args = character(), stdout = "", stderr = "", stdin = "",
+    input = NULL, env = character(), wait = TRUE,
+    minimized = FALSE, invisible = TRUE, timeout = 0
+    ) {
+      system2(
+        command = command, args = args,
+        stdout = stdout, stderr = stderr, stdin = stdin, input = input,
+        env = env, wait = wait, timeout = timeout
+      )
+    }
+    return(runner)
+  }
+  
+  # --- Caso Docker: delega al container fratello corrispondente ---
+  host_shared_path <- Sys.getenv("BIOMIX_HOST_SHARED_PATH")
+  if (nchar(host_shared_path) == 0) {
+    stop("BIOMIX_HOST_SHARED_PATH non impostata: impossibile montare la ",
+         "cartella condivisa nel container di analisi.")
+  }
+  
+  runner <- function(
+    command, args = character(), stdout = "", stderr = "", stdin = "",
+    input = NULL, env = character(), wait = TRUE,
+    minimized = FALSE, invisible = TRUE, timeout = 0
+  ) {
+    
+    # Template: docker run --rm -v <host_path>:/shared --entrypoint Rscript
+    #           <dockerImage> COMMAND ARGS
+    
+    system2(
+      command = "docker",
+      args = c(
+        "run", "--rm",
+        "-v", paste0(host_shared_path, ":/shared"),
+        "--entrypoint", command,          # es. "Rscript" — sovrascrive l'ENTRYPOINT dell'immagine
+        dockerImage,
+        shQuote(args)
+      ),
+      stdout = stdout, stderr = stderr, stdin = stdin, input = input,
+      env = env, wait = wait, timeout = timeout
+    )
+    
+  }
+  
+  return(runner)
+}
+
+
+
+
+
+
+
+
+
 #if(args[1] == ""){
-        # taking input with showing the message
-        args = commandArgs(trailingOnly=TRUE)
+# taking input with showing the message
+args = commandArgs(trailingOnly=TRUE)
 #}
+
+print(args)
 
 #directory <- "/home/cristia/Scrivania/PhD/Bioinfo/Article_MULTI_BETA"
 directory <- unlist(args[[3]])
+
+
+# NEW: shared_dir is the mounted folder (e.g. "/shared" in Docker mode),
+# passed as the 4th argument from app.R. Only the JSON lives there for now.
+# Falls back to `directory` when not provided (e.g. local/non-Docker runs
+# with only 3 args), so nothing breaks outside Docker mode.
+shared_dir <- if (length(args) >= 4) unlist(args[[4]]) else directory
+
+
 setwd(paste(directory,"_INSTALL",sep="/"))
 renv::load(paste(directory,"_INSTALL",sep="/"))
 
@@ -36,6 +112,12 @@ setwd(directory)
 print(directory)
 
 library(vroom)
+
+
+site_lib <- "/usr/local/lib/R/site-library"
+if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+  .libPaths(c(.libPaths(), site_lib))
+}
 
 
 #LOADING ARGUMENTS AND VARIABLES REQUIRED IN THE CODE
@@ -68,43 +150,43 @@ position <- which(COMMAND$DATA_TYPE %in% "Undefined")
 cat("\n\n\n\n\n Checking Undefined datasets.... \n\n\n\n\n")
 iterations <- 0
 for (i in position){
-        if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
-           | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
-           {
-                
-                STATISTICS <- "YES"
-                Cell_type <- as.character(COMMAND$LABEL[i])
-                cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-                iterations = iterations + 1
-                selection_samples = COMMAND$SELECTION[i]
-                #purity_filter =COMMAND$PURITY[i]
-                directory2 <- paste(directory,"/Undefined/INPUT",sep="")
-                #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-                #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-                source(paste(directory,"/Undefined/BiomiX_Undefined.r",sep=""))
-                cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-                gc()
-        }else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
-          
-                #The following block allows you to re-run the single omics pipelines to generate the normalised data
-                #Each time you run and integration analysis. It is quite time consuming, but gives stability.
-          
-                STATISTICS <- "NO"
-                Cell_type <- as.character(COMMAND$LABEL[i])
-                cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-                iterations = iterations + 1
-                selection_samples = COMMAND$SELECTION[i]
-                #purity_filter =COMMAND$PURITY[i]
-                directory2 <- paste(directory,"/Undefined/INPUT",sep="")
-                #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-                #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-                #source(paste(directory,"/Undefined/BiomiX_Undefined.r",sep=""))
-                #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-                cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
-                
-                gc()
-                
-        }
+  if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
+     | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
+  {
+    
+    STATISTICS <- "YES"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i]
+    #purity_filter =COMMAND$PURITY[i]
+    directory2 <- paste(directory,"/Undefined/INPUT",sep="")
+    #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    source(paste(directory,"/Undefined/BiomiX_Undefined.r",sep=""))
+    cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    gc()
+  }else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
+    
+    #The following block allows you to re-run the single omics pipelines to generate the normalised data
+    #Each time you run and integration analysis. It is quite time consuming, but gives stability.
+    
+    STATISTICS <- "NO"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i]
+    #purity_filter =COMMAND$PURITY[i]
+    directory2 <- paste(directory,"/Undefined/INPUT",sep="")
+    #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    #source(paste(directory,"/Undefined/BiomiX_Undefined.r",sep=""))
+    #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
+    
+    gc()
+    
+  }
 }
 
 
@@ -124,38 +206,85 @@ position <- which(COMMAND$DATA_TYPE %in% "Transcriptomics")
 cat("\n\n\n\n\nChecking Transcriptomics datasets.... \n\n\n\n\n")
 iterations <- 0
 for (i in position){
-if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
-   | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
-   {
-
-        STATISTICS <- "YES"
-        Cell_type <- as.character(COMMAND$LABEL[i])
-        cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-        iterations = iterations + 1
-        selection_samples = COMMAND$SELECTION[i]
-        #purity_filter =COMMAND$PURITY[i]
-        directory2 <- paste(directory,"/Transcriptomics/INPUT",sep="")
-        #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-        #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-        source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
-        cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-        gc()
-
-        }else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
-        STATISTICS <- "NO"
-        Cell_type <- as.character(COMMAND$LABEL[i])
-        cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-        iterations = iterations + 1
-        selection_samples = COMMAND$SELECTION[i]
-        #purity_filter =COMMAND$PURITY[i]
-        directory2 <- paste(directory,"/Transcriptomics/INPUT",sep="")
-        #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-        #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-        #source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
-        #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-        cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
-        gc()
-}
+  if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
+     | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
+  {
+    
+    STATISTICS <- "YES"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i]
+    #purity_filter =COMMAND$PURITY[i]
+    directory2 <- paste(directory,"/Transcriptomics/INPUT",sep="")
+    #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    
+    
+    if (!is_in_docker) {
+      # --- Caso locale: comportamento originale, invariato ---
+      source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
+    } else {
+      # --- Caso Docker: delega al container fratello ---
+      #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+      runner_transcriptomics <- generateRunnerFunction("biomix-transcriptomics-test:latest")
+      
+      
+      runner_transcriptomics(
+        command = "Rscript",
+        args    = c(
+          paste0(directory, "/Transcriptomics/Biomix_DGE_GENES_LIMMA.r"),
+          directory,
+          Cell_type,
+          args[[1]],
+          args[[2]],
+          shared_dir,        # NEW — così lo script transcriptomics sa dove leggere il JSON
+          iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+          
+          
+        )
+      )
+    }
+    
+    cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    gc()
+    
+  }else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
+    STATISTICS <- "NO"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i]
+    #purity_filter =COMMAND$PURITY[i]
+    directory2 <- paste(directory,"/Transcriptomics/INPUT",sep="")
+    #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    # if (!is_in_docker) {
+    #   # --- Caso locale: comportamento originale, invariato ---
+    #   source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
+    # } else {
+    #   # --- Caso Docker: delega al container fratello ---
+    #   #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+    #   runner_transcriptomics <- generateRunnerFunction("biomix-transcriptomics-test:latest")
+    #   
+    #   
+    #   runner_transcriptomics(
+    #     command = "Rscript",
+    #     args    = c(
+    #       paste0(directory, "/Transcriptomics/Biomix_DGE_GENES_LIMMA.r"),
+    #       directory,
+    #       Cell_type,
+    #       args[[1]],
+    #       args[[2]],
+    #       shared_dir,        # NEW — così lo script transcriptomics sa dove leggere il JSON
+    #       iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+    #       
+    #     )
+    #   )
+    # }    #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
+    gc()
+  }
 }
 
 
@@ -170,38 +299,84 @@ position <- which(COMMAND$DATA_TYPE %in% "Metabolomics")
 cat("\n\n\n\n\nChecking Metabolomics datasets.... \n\n\n\n\n")
 iterations <- 0
 for (i in position){
-        if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
-           | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
-           {
-        
-        STATISTICS <- "YES"
-        Cell_type <- as.character(COMMAND$LABEL[i])
-        cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-        iterations = iterations + 1
-        selection_samples = COMMAND$SELECTION[i] # TO ADD
-        #purity_filter =COMMAND$PURITY[i] #TO ADD
-        directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
-        files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-        files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-        source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
-        cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-        gc()
-        
-        }else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
-                STATISTICS <- "NO"
-                Cell_type <- as.character(COMMAND$LABEL[i])
-                cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-                iterations = iterations + 1
-                selection_samples = COMMAND$SELECTION[i] # TO ADD
-                #purity_filter =COMMAND$PURITY[i] #TO ADD
-                directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
-                files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-                files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-                #source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
-                #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-                cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
-                gc() 
-        }
+  if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES"
+     | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
+  {
+    
+    STATISTICS <- "YES"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i] # TO ADD
+    #purity_filter =COMMAND$PURITY[i] #TO ADD
+    directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
+    files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    if (!is_in_docker) {
+      # --- Caso locale: comportamento originale, invariato ---
+      source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep=""))
+    } else {
+      # --- Caso Docker: delega al container fratello ---
+      #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+      runner_metabolomics <- generateRunnerFunction("biomix-metabolomics-test:latest")
+      
+      
+      runner_metabolomics(
+        command = "Rscript",
+        args    = c(
+          paste0(directory, "/Metabolomics/BiomiX_DMA.r"),
+          directory,
+          Cell_type,
+          args[[1]],
+          args[[2]],
+          shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+          iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+          
+          
+        )
+      )
+    }
+    #source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
+    cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    gc()
+    
+  }else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
+    STATISTICS <- "NO"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i] # TO ADD
+    #purity_filter =COMMAND$PURITY[i] #TO ADD
+    directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
+    files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    # if (!is_in_docker) {
+    #   # --- Caso locale: comportamento originale, invariato ---
+    #   source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep=""))
+    # } else {
+    #   # --- Caso Docker: delega al container fratello ---
+    #   #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+    #   runner_metabolomics <- generateRunnerFunction("biomix-metabolomics-test:latest")
+    #   
+    #   
+    #   runner_metabolomics(
+    #     command = "Rscript",
+    #     args    = c(
+    #       paste0(directory, "/Metabolomics/BiomiX_DMA.r"),
+    #       directory,
+    #       Cell_type,
+    #       args[[1]],
+    #       args[[2]],
+    #       shared_dir        # NEW — così lo script metabolomics sa dove leggere il JSON
+    #       
+    #     )
+    #   )
+    # }
+    #source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
+    #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
+    gc() 
+  }
 }
 
 #================================================================================
@@ -211,38 +386,86 @@ position <- which(COMMAND$DATA_TYPE %in% "Methylomics")
 cat("\n\n\n\n\nChecking Methylomics datasets.... \n\n\n\n\n")
 iterations <- 0
 for (i in position){
-        if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES" 
-           | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
-                {
-        
-        STATISTICS <- "YES"
-        Cell_type <- as.character(COMMAND$LABEL[i])
-        cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-        iterations = iterations + 1
-        selection_samples = COMMAND$SELECTION[i] # TO ADD
-        #purity_filter =COMMAND$PURITY[i] #TO ADD
-        directory2 <- paste(directory,"/Methylomics/INPUT",sep="")
-        files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-        files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-        source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
-        cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-        gc()
-        
-        } else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
-                STATISTICS <- "NO"
-                Cell_type <- as.character(COMMAND$LABEL[i])
-                cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
-                iterations = iterations + 1
-                selection_samples = COMMAND$SELECTION[i] # TO ADD
-                #purity_filter =COMMAND$PURITY[i] #TO ADD
-                directory2 <- paste(directory,"/Methylomics/INPUT",sep="")
-                files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-                files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-                #source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
-                #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
-                cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
-                gc()
-        }
+  if(COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "YES" 
+     | COMMAND$ANALYSIS[i] == "YES" & COMMAND$INTEGRATION[i] == "NO")
+  {
+    
+    STATISTICS <- "YES"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i] # TO ADD
+    #purity_filter =COMMAND$PURITY[i] #TO ADD
+    directory2 <- paste(directory,"/Methylomics/INPUT",sep="")
+    files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    if (!is_in_docker) {
+      # --- Caso locale: comportamento originale, invariato ---
+      source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
+    } else {
+      # --- Caso Docker: delega al container fratello ---
+      #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+      runner_metabolomics <- generateRunnerFunction("biomix-methylomics-test:latest")
+      
+      
+      runner_metabolomics(
+        command = "Rscript",
+        args    = c(
+          paste0(directory, "/Methylomics/BiomiX_DMA.r"),
+          directory,
+          Cell_type,
+          args[[1]],
+          args[[2]],
+          shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+          iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+          
+          
+        )
+      )
+    }
+    #source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
+    cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    gc()
+    
+  } else if (COMMAND$ANALYSIS[i] == "NO" & COMMAND$INTEGRATION[i] == "YES") {
+    STATISTICS <- "NO"
+    Cell_type <- as.character(COMMAND$LABEL[i])
+    cat(paste( "\n\n\n\n\nStarting the ", Cell_type, " analysis \n\n\n\n\n", sep =""))
+    iterations = iterations + 1
+    selection_samples = COMMAND$SELECTION[i] # TO ADD
+    #purity_filter =COMMAND$PURITY[i] #TO ADD
+    directory2 <- paste(directory,"/Methylomics/INPUT",sep="")
+    files <- grep("MATRIX*",list.files(directory2),value=TRUE)
+    files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
+    # if (!is_in_docker) {
+    #   # --- Caso locale: comportamento originale, invariato ---
+    #   source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
+    # } else {
+    #   # --- Caso Docker: delega al container fratello ---
+    #   #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+    #   runner_metabolomics <- generateRunnerFunction("biomix-methylomics-test:latest")
+    #   
+    #   
+    #   runner_metabolomics(
+    #     command = "Rscript",
+    #     args    = c(
+    #       paste0(directory, "/Methylomics/BiomiX_DMA.r"),
+    #       directory,
+    #       Cell_type,
+    #       args[[1]],
+    #       args[[2]],
+    #       shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+    #       iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+    #       
+    #       
+    #     )
+    #   )
+    # }
+    #source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
+    #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
+    cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
+    gc()
+  }
 }
 
 #================================================================================
@@ -251,51 +474,51 @@ old_comp <-  Sys.time() # calculate time computation
 
 if(COMMAND_MOFA[2,2] == "YES") {
   
-
-
-if(COMMAND_MOFA[1,2] == "MOFA_INTEGRATION") {        
-        
-        
-        if(COMMAND_MOFA[3,2] == 0) {
-                
-                cat(paste( "\n\n\n\n\nStarting the AUTOMATIC MOFA analysis \n\n\n\n\n", sep =""))
-                Sys.sleep(5)
-                source(paste(directory,"/integration/MOFA_MULTI2_AUTO.R",sep=""))
-                cat("\n\n\n\n\n AUTOMATIC MOFA analysis complete ^-^")
-                
-        }else{
-                
-                cat(paste( "\n\n\n\n\nStarting the MOFA analysis \n\n\n\n\n", sep =""))
-                Sys.sleep(5)
-                source(paste(directory,"/integration/MOFA_MULTI2.R",sep=""))
-                cat("\n\n\n\n\n MOFA analysis complete ^-^")
-        }
-                
-}
-        if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION") {
-                
-                cat(paste( "\n\n\n\n\nStarting the DIABLO analysis \n\n\n\n\n", sep =""))
-                Sys.sleep(5)
-                source(paste(directory,"/integration/DIABLO_MULTI2.R",sep=""))
-                cat("\n\n\n\n\n DIABLO analysis complete ^-^")
-                
-        }
-    
-        if(COMMAND_MOFA[1,2] == "SNF_INTEGRATION") {
-          
-                cat(paste( "\n\n\n\n\nStarting the SNF analysis \n\n\n\n\n", sep =""))
-                Sys.sleep(5)
-                source(paste(directory,"/integration/SNF_int.R",sep=""))
-                cat("\n\n\n\n\n SNF analysis complete ^-^")
-          
-        }
   
-        if(COMMAND_MOFA[1,2] == "NEMO_INTEGRATION") {
+  
+  if(COMMAND_MOFA[1,2] == "MOFA_INTEGRATION") {        
     
-                cat(paste( "\n\n\n\n\nStarting the NEMO analysis \n\n\n\n\n", sep =""))
-                Sys.sleep(5)
-                source(paste(directory,"/integration/NEMO_int.R",sep=""))
-                cat("\n\n\n\n\n NEMO analysis complete ^-^")
+    
+    if(COMMAND_MOFA[3,2] == 0) {
+      
+      cat(paste( "\n\n\n\n\nStarting the AUTOMATIC MOFA analysis \n\n\n\n\n", sep =""))
+      Sys.sleep(5)
+      source(paste(directory,"/integration/MOFA_MULTI2_AUTO.R",sep=""))
+      cat("\n\n\n\n\n AUTOMATIC MOFA analysis complete ^-^")
+      
+    }else{
+      
+      cat(paste( "\n\n\n\n\nStarting the MOFA analysis \n\n\n\n\n", sep =""))
+      Sys.sleep(5)
+      source(paste(directory,"/integration/MOFA_MULTI2.R",sep=""))
+      cat("\n\n\n\n\n MOFA analysis complete ^-^")
+    }
+    
+  }
+  if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION") {
+    
+    cat(paste( "\n\n\n\n\nStarting the DIABLO analysis \n\n\n\n\n", sep =""))
+    Sys.sleep(5)
+    source(paste(directory,"/integration/DIABLO_MULTI2.R",sep=""))
+    cat("\n\n\n\n\n DIABLO analysis complete ^-^")
+    
+  }
+  
+  if(COMMAND_MOFA[1,2] == "SNF_INTEGRATION") {
+    
+    cat(paste( "\n\n\n\n\nStarting the SNF analysis \n\n\n\n\n", sep =""))
+    Sys.sleep(5)
+    source(paste(directory,"/integration/SNF_int.R",sep=""))
+    cat("\n\n\n\n\n SNF analysis complete ^-^")
+    
+  }
+  
+  if(COMMAND_MOFA[1,2] == "NEMO_INTEGRATION") {
+    
+    cat(paste( "\n\n\n\n\nStarting the NEMO analysis \n\n\n\n\n", sep =""))
+    Sys.sleep(5)
+    source(paste(directory,"/integration/NEMO_int.R",sep=""))
+    cat("\n\n\n\n\n NEMO analysis complete ^-^")
     
   }
   
@@ -311,8 +534,8 @@ cat(paste( "\n\n\n\n\nStarting the integrated factors correlation vs clinical fa
 #Sys.sleep(5)
 
 if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGRATION" & COMMAND_MOFA[2,2] == "YES") {
-        source(paste(directory,"/Clinical_data/BiomiX_Clinical.R",sep=""))
-        cat("\n\n\n\n\n integrated factors correlation vs clinical factors completed ^-^")
+  source(paste(directory,"/Clinical_data/BiomiX_Clinical.R",sep=""))
+  cat("\n\n\n\n\n integrated factors correlation vs clinical factors completed ^-^")
 }
 
 
@@ -324,8 +547,8 @@ cat(paste( "\n\n\n\n\nStarting the integrated factors articles matching \n\n\n\n
 #Sys.sleep(5)
 
 if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGRATION" & COMMAND_MOFA[2,2] == "YES") {
-        source(paste(directory,"/integration/BiomiX_PUBMED.R",sep=""))
-        cat("\n\n\n\n\n integrated factors articles matching completed ^-^")
+  source(paste(directory,"/integration/BiomiX_PUBMED.R",sep=""))
+  cat("\n\n\n\n\n integrated factors articles matching completed ^-^")
 }
 
 
@@ -336,8 +559,8 @@ cat(paste( "\n\n\n\n\nStarting the integrated factors pathway analysis \n\n\n\n\
 #Sys.sleep(5)
 
 if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGRATION" & COMMAND_MOFA[2,2] == "YES") {
-        source(paste(directory,"/integration/BiomiX_MOFA_MINER.R",sep=""))
-        cat("\n\n\n\n\n integrated factors pathway analysis completed ^-^")
+  source(paste(directory,"/integration/BiomiX_MOFA_MINER.R",sep=""))
+  cat("\n\n\n\n\n integrated factors pathway analysis completed ^-^")
 }
 
 
@@ -355,48 +578,48 @@ Sys.sleep(5)
 #COPY OMICS DIRECTORY
 
 if (directory != args[3]){
-
-for(output in 1:length(na.omit(COMMAND$LABEL))) {
-        print(output)
-        print(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))
-        if(file.exists(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))){
-                dir.create(path =  paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                file.copy(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""), paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
-                print(paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))
-}
-}
-
-if(COMMAND_MOFA[2,2] == "YES") {
-
-#COPY MOFA FILES
-output<-list.files(path = paste(directory,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","AUTOMATIC_SEARCH_BEST_FACTORS_",args[1], "_vs_", args[2], sep=""))
-if(file.exists(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""))){
+  
+  for(output in 1:length(na.omit(COMMAND$LABEL))) {
+    print(output)
+    print(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))
+    if(file.exists(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))){
+      dir.create(path =  paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+      file.copy(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""), paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
+      print(paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))
+    }
+  }
+  
+  if(COMMAND_MOFA[2,2] == "YES") {
+    
+    #COPY MOFA FILES
+    output<-list.files(path = paste(directory,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","AUTOMATIC_SEARCH_BEST_FACTORS_",args[1], "_vs_", args[2], sep=""))
+    if(file.exists(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""))){
+      dir.create(path =  paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+      file.copy(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = FALSE, copy.mode = TRUE) 
+      print(paste(output,"copied", sep = " "))
+    }
+    
+    #COPY MOFA DIRECTORY
+    file_to_transfer<-dir(path = paste(directory,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","MOFA_",args[1], "_vs_", args[2], sep="") )
+    for(output in file_to_transfer){
+      if(file.exists(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""))){
         dir.create(path =  paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        file.copy(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = FALSE, copy.mode = TRUE) 
+        file.copy(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
+        #unlink(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), recursive=TRUE)
         print(paste(output,"copied", sep = " "))
-}
-
-#COPY MOFA DIRECTORY
-file_to_transfer<-dir(path = paste(directory,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","MOFA_",args[1], "_vs_", args[2], sep="") )
-for(output in file_to_transfer){
-        if(file.exists(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""))){
-                dir.create(path =  paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                file.copy(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
-                #unlink(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), recursive=TRUE)
-                print(paste(output,"copied", sep = " "))
-        }}
-
-if(COMMAND_ADVANCED[1,12] == "YES" | COMMAND_ADVANCED[2,12]  == "YES") {
-
-output<-dir(path = paste(directory,"/","Clinical_data", "/OUTPUT/",sep =""), pattern = paste("^","Clinical_",args[1], "_vs_", args[2], sep="") )
-        if(file.exists(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""))){
-                dir.create(path =  paste(DIR_METADATA_output,"/","Clinical_data","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                file.copy(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","Clinical_data","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
-                #unlink(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""), recursive=TRUE)
-                print(paste(output,"copied", sep = " "))
-        }
-}
-}
+      }}
+    
+    if(COMMAND_ADVANCED[1,12] == "YES" | COMMAND_ADVANCED[2,12]  == "YES") {
+      
+      output<-dir(path = paste(directory,"/","Clinical_data", "/OUTPUT/",sep =""), pattern = paste("^","Clinical_",args[1], "_vs_", args[2], sep="") )
+      if(file.exists(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""))){
+        dir.create(path =  paste(DIR_METADATA_output,"/","Clinical_data","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+        file.copy(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","Clinical_data","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
+        #unlink(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""), recursive=TRUE)
+        print(paste(output,"copied", sep = " "))
+      }
+    }
+  }
 }
 
 cat("\n\n\n\n\n file saving complete ^-^")

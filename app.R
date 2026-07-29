@@ -13,6 +13,18 @@
 
 
 
+#Retrieve the environmental variable for docker.
+#ENV BIOMIX_RUNNING_IN_DOCKER=true Da aggiungere al docker file!
+is_in_docker <- as.logical(Sys.getenv("BIOMIX_RUNNING_IN_DOCKER", unset = FALSE))
+print(is_in_docker)
+#is_in_docker <- TRUE
+# Fixed path used inside the container when running in Docker. The user is
+# responsible for bind-mounting their own host folder to this exact path,
+# e.g. `docker run -v C:\Users\me\results:/shared ...`
+DOCKER_SHARED_PATH <- "/shared"
+
+
+
 #Loading R enrironemnt or alternatively conda one (to be defined)
 #Load renv environment:
 renv::load(project = "_INSTALL")
@@ -659,9 +671,9 @@ server <- function(input, output, session) {
   # The script does setwd(BASE_DIR) and reads COMBINED_COMMANDS.json from there.
   # ---------------------------------------------------------------------------
   observeEvent(input$btn_run, {
-    
+
     sd <- startup_data()
-    
+
     # Validate prerequisites
     if (!sd$ready) {
       showNotification(
@@ -670,12 +682,22 @@ server <- function(input, output, session) {
       )
       return()
     }
-    
+
     # BASE_DIR = directory where app.R and BiomiX_BETA.r live
     # JSON must be written here so BiomiX_BETA.r can find it with setwd()
     base_dir <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
     json_path <- file.path(base_dir, "COMBINED_COMMANDS.json")
     
+    
+    # NEW: shared_dir is the mounted folder visible to sibling containers
+    # (e.g. "/shared" in Docker mode). For now, only the JSON needs to live
+    # there too — everything else (code, _INSTALL, INPUT/OUTPUT) keeps using
+    # base_dir exactly as before.
+    shared_dir <- sd$output_dir
+    json_path_shared <- file.path(shared_dir, "COMBINED_COMMANDS.json")
+    
+    
+
     # Step 1: write the JSON
     tryCatch({
       json_data <- combined_json_data()
@@ -690,6 +712,12 @@ server <- function(input, output, session) {
         output_dir        = sd$output_dir,
         out_path          = json_path
       )
+      
+      # NEW: also write an identical copy into shared_dir, so sibling
+      # containers (which only mount shared_dir, not base_dir) can read it.
+      file.copy(json_path, json_path_shared, overwrite = TRUE)
+      
+      
       showNotification(
         paste0("JSON written to: ", json_path),
         type = "message", duration = 4
@@ -701,10 +729,10 @@ server <- function(input, output, session) {
       )
       return()
     })
-    
+
     # Step 2: locate BiomiX_BETA.r (same directory as app.R)
     pipeline_script <- file.path(base_dir, "BiomiX_BETA.r")
-    
+
     if (!file.exists(pipeline_script)) {
       showNotification(
         paste0("BiomiX_BETA.r not found in: ", base_dir,
@@ -713,7 +741,7 @@ server <- function(input, output, session) {
       )
       return()
     }
-    
+
     # Step 3: launch BiomiX_BETA.r via Rscript as a background process.
     # system2(..., wait = FALSE) returns immediately — the Shiny app stays
     # responsive while the pipeline runs in the background.
@@ -725,20 +753,21 @@ server <- function(input, output, session) {
     } else {
       file.path(R.home("bin"), "Rscript")
     }
-    
+
     system2(
       command = rscript,
       args    = c(
         shQuote(pipeline_script),
         shQuote(sd$group1),
         shQuote(sd$group2),
-        shQuote(base_dir)
+        shQuote(base_dir),
+        shQuote(shared_dir)     # NEW — posizione 4, per uso futuro (salvare risultati in shared)
       ),
       wait   = TRUE,    # blocking: output streams to the R console in real time
       stdout = "",      # "" = inherit the parent R console (not captured)
       stderr = ""       # "" = same for errors
     )
-    
+
     showNotification(
       paste0("BiomiX pipeline started! Groups: ", sd$group1, " vs ", sd$group2,
              ". Results will be saved to: ", sd$output_dir),
@@ -746,6 +775,8 @@ server <- function(input, output, session) {
       duration = 10
     )
   })
+  
+  
   
   # ---------------------------------------------------------------------------
   # Run status indicator (shown next to the Run button)
@@ -765,5 +796,9 @@ server <- function(input, output, session) {
 # LAUNCH
 # =============================================================================
 print("RUNNING")
+message("\n================================================================\n",
+        "  BiomiX GUI is starting.\n",
+        "  Once ready, open your browser and go to: http://localhost:3838\n",
+        "================================================================\n")
 shinyApp(ui = ui, server = server)
 

@@ -126,9 +126,9 @@ perform_statistical_dmp_analysis <- function(Matrix,
                                              padju,
                                              LogFC) {
   # Create output directories
-  dir.create(path = file.path(directory, "Methylomics/OUTPUT/"), showWarnings = FALSE)
+  dir.create(path = file.path(directory, "Methylomics/OUTPUT/"), recursive = TRUE, showWarnings = FALSE)
   dir.create(path = file.path(directory, "Methylomics/OUTPUT/", paste0(Cell_type, "_", args[1], "_vs_", args[2])), 
-             showWarnings = FALSE)
+             recursive = TRUE, showWarnings = FALSE)
   
   directory2 <- file.path(directory, "Methylomics/OUTPUT/", paste0(Cell_type, "_", args[1], "_vs_", args[2]))
   setwd(directory2)

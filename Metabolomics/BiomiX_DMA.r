@@ -1,32 +1,29 @@
+#### STANDALONE ENTRY POINT ----
+#
+# Invocation:
+#   Rscript BiomiX_DMA.r <DIRECTORY> <CELL_TYPE_LABEL> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>
 
+if (!exists("Cell_type")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 6) {
+    stop("Usage: Rscript BiomiX_DMA.r <DIRECTORY> <CELL_TYPE_LABEL> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
+  }
+  
+  directory  <- cli_args[1]
+  Cell_type  <- cli_args[2]
+  args       <- c(cli_args[3], cli_args[4])
+  shared_dir <- cli_args[5]
+  iterations <- as.numeric(cli_args[6])
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  site_lib <- "/usr/local/lib/R/site-library"
+  if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+    .libPaths(c(.libPaths(), site_lib))
+  }
+}
 
-
-# biomix_analysis.R
-# Main analysis pipeline using modular BiomiX functions
-
-# =======================
-# User Parameters Manual load (Debugging)
-# =======================
-# 
-# library(vroom)
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"PTB"
-# args[2] <-"HC"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# 
-# directory <- args[[3]]
-# iterations = 1
-# selection_samples = "NO"
-# Cell_type = "TEST"
-# i = 1
-# ANNOTATION = "MS1"
-# DIR_METADATA <- readLines("C:/Users/crist/Desktop/BiomiX2.5/directory.txt")
-# STATISTICS = "YES"
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-
-# =======================
-# Load Functions & Setup
-# =======================
 
 library(vroom)
 library(dplyr)
@@ -35,21 +32,12 @@ library(stringr)
 library(rlist)
 library(tibble)
 library(readxl)
-
-
-setwd(directory)
-
-
-
-#LOADING ARGUMENTS AND VARIABLES REQUIRED IN THE CODE
-
-
 library(jsonlite)
 library(tidyverse)
+
 setwd(directory)
 print(directory)
-combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
-
+combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
 
 COMMAND <- combined_json[["COMMANDS"]]
 COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
@@ -61,12 +49,25 @@ LogFC <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[1])
 padju <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS[2])
 ANNOTATION <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[1]
 ANNOTATION_TYPE <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_GENERAL[2]
-MS2_databases = c("HMDB","MONA","MASSBANK")  
+MS2_databases = c("HMDB","MONA","MASSBANK")
 
+# `i` recovered from Cell_type (was inherited via source() before)
+if (!exists("i")) {
+  i <- which(COMMAND$LABEL == Cell_type)
+  if (length(i) == 0) {
+    stop(paste0("No row in COMMAND$LABEL matches Cell_type '", Cell_type, "'"))
+  }
+  i <- i[1]
+  
+  STATISTICS <- "YES"
+  selection_samples <- COMMAND$SELECTION[i]
+}
 
 directory2 <- paste(directory,"/Metabolomics/",sep="")
 setwd(directory2)
 source("BiomiX_DMA_functions.r")
+
+
 
 
 
@@ -145,9 +146,8 @@ load_annotation(ANNOTATION, i, COMMAND_ADVANCED)
 
 
 #create directory
-dir.create(path = paste(directory,"/Integration/INPUT/", "Metabolomics_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-directory2 <- paste(directory, "/Integration/INPUT/", "Metabolomics_", Cell_type,  "_",args[1],"_vs_", args[2], sep ="")
-
+dir.create(path = paste(shared_dir,"/Integration/INPUT/", "Metabolomics_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+directory2 <- paste(shared_dir, "/Integration/INPUT/", "Metabolomics_", Cell_type,  "_",args[1],"_vs_", args[2], sep ="")
 setwd(directory2)
 
 
@@ -253,9 +253,8 @@ matrixs[,3:ncol(matrixs)]<-apply(matrixs[,3:ncol(matrixs)],2,as.numeric)
 #matrixs[matrixs == 0] <- 1
 
 
-dir.create(path = paste(directory,"/Integration/INPUT/", "Metabolomics_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-
-directory3 <- paste(directory, "/Integration/INPUT/", "Metabolomics_", Cell_type,  "_",args[1],"_vs_", args[2], sep ="")
+dir.create(path = paste(shared_dir,"/Integration/INPUT/", "Metabolomics_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+directory3 <- paste(shared_dir, "/Integration/INPUT/", "Metabolomics_", Cell_type,  "_",args[1],"_vs_", args[2], sep ="")
 
 write.table(matrixs,paste(directory3,"/Metabolomics_",Cell_type, "_MOFA.tsv", sep = ""),quote = FALSE, row.names = F, sep = "\t")
 
@@ -279,7 +278,7 @@ gc()
 if(ANNOTATION == "Annotated"){
 
 ###  DGE ANALYSIS ###  
-run_dge_analysis_annotated(TEST, matrix, Metadata, Cell_type, args, directory, padju, LogFC)
+run_dge_analysis_annotated(TEST, matrix, Metadata, Cell_type, args, shared_dir, padju, LogFC)
 
 ###  HEATMAP ###
 generate_heatmap_annotated(ALTI, BASSI, matrix, Metadata, Heatmap_genes, Cell_type, args, directory2)
@@ -290,7 +289,7 @@ query_id <- total[which(total$p_val < 0.05),] #REPLACE IT WITH P.ADJ
 run_metpath_pipeline_annotated(total, COMMAND_ADVANCED, Cell_type, args, directory2, hmdb_pathway, kegg_hsa_pathway)
 
 ##### MetaboAnalistR  #####
-run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args, directory, directory2)        
+run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args, shared_dir, directory2)        
         
 } else {
         
@@ -368,19 +367,17 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
                 #databases. The final file (annot) will be used to replace the metabolites
                 #with a level of annotation of 3 or 4.
                 
-                build_msms_annotation(directory, Cell_type, args, param, annotate_result5)
+                build_msms_annotation(shared_dir, Cell_type, args, param, annotate_result5)
                 
                 #Genetartion MS2 spectra for each peak and the metabolites identified in the reference databases
-                generate_ms2_spectra_plots(directory, directory2, Cell_type, args, MS2_databases, annotate_result5)
-                  
+                generate_ms2_spectra_plots(directory, shared_dir, directory2, Cell_type, args, MS2_databases, annotate_result5)                  
                 
         }else{
                 
                 #This is the starting of the MS1 pipeline and it is shared with the MS2
-                dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                dir.create(path = paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-                directory2 <- paste(directory,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="")
-                
+                dir.create(path = paste(shared_dir,"/Metabolomics/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+                dir.create(path = paste(shared_dir,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+                directory2 <- paste(shared_dir,"/Metabolomics/OUTPUT/", Cell_type, "_", args[1], "_vs_", args[2], sep ="")
                 
                 setwd(directory2)        
         }
@@ -690,9 +687,10 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
                 
                 
                 pathway_class_HMDB = 
-                        metpath::pathway_class(hmdb_pathway)
+                        hmdb_pathway@pathway_class
+                
                 pathway_class_KEGG = 
-                        metpath::pathway_class(kegg_hsa_pathway)
+                        kegg_hsa_pathway@pathway_class
                 
                 
                 pdf(file=paste("Pathway_analysis_HMDB_", args[1],"_",args[2],"_", Cell_type,".pdf", sep=""))
@@ -806,7 +804,7 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
                                             total,
                                             Cell_type,
                                             args,
-                                            directory,
+                                            shared_dir,
                                             directory2
                                             )
         
