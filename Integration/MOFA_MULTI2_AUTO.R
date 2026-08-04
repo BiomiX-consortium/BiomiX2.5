@@ -9,7 +9,7 @@ library(caret)
 library(rlist)
 library(MOFA2)
 library(reticulate)
-use_python("/usr/bin/python3", required=TRUE)
+#use_python("/usr/bin/python3", required=TRUE)
 # use_condaenv("BiomiX-env", required = TRUE) 
 # reticulate::py_config()
 
@@ -40,7 +40,7 @@ if (!exists("Cell_type")) {
   print(cli_args)
   print(shared_dir)
   combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
-  reticulate::use_python("/opt/py-env/bin/python3", required = TRUE)
+  #reticulate::use_python("/opt/py-env/bin/python3", required = TRUE)
   
 }
 
