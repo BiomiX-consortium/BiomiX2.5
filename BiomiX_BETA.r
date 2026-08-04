@@ -227,7 +227,7 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_transcriptomics <- generateRunnerFunction("biomix-transcriptomicsV2:latest")
+      runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomicsV2:latest")
       
       
       runner_transcriptomics(
@@ -318,7 +318,7 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_metabolomics <- generateRunnerFunction("biomix-metabolomicsV2:latest")
+      runner_metabolomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-metabolomicsV2:latest")
       
       
       runner_metabolomics(
@@ -405,7 +405,7 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_methylomics <- generateRunnerFunction("biomix-methylomicsV2:latest")
+      runner_methylomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-methylomicsV2:latest")
       
       
       runner_methylomics(
@@ -486,7 +486,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
       } else {
         # --- Caso Docker: delega al container fratello ---
         #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-        runner_MOFA <- generateRunnerFunction("biomix_mofa-diabloV2:latest")
+        runner_MOFA <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-mofa-diabloV2:latest")
         
         runner_MOFA(
           command = "Rscript",
@@ -518,7 +518,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_DIABLO <- generateRunnerFunction("biomix_mofa-diabloV2:latest")
+      runner_DIABLO <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-mofa-diabloV2:latest")
       
       runner_DIABLO(
         command = "Rscript",
@@ -550,7 +550,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_SNF <- generateRunnerFunction("biomix-snf-nemoV2:latest")
+      runner_SNF <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-snf-nemoV2:latest")
       
       runner_SNF(
         command = "Rscript",
@@ -583,7 +583,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_NEMO <- generateRunnerFunction("biomix-snf-nemoV2:latest")
+      runner_NEMO <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-snf-nemoV2:latest")
       
       runner_NEMO(
         command = "Rscript",
@@ -628,7 +628,7 @@ if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGR
   } else {
     # --- Caso Docker: delega al container fratello ---
     #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-    runner_Interpretation <- generateRunnerFunction("biomix-interpretationV2:latest")
+    runner_Interpretation <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretationV2:latest")
     
     runner_Interpretation(
       command = "Rscript",
@@ -663,7 +663,7 @@ if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGR
   if (!is_in_docker) {
     source(paste(directory,"/Integration/BiomiX_MOFA_MINER.R",sep=""))
   } else {
-    runner_MOFA_MINER <- generateRunnerFunction("biomix-interpretationV2:latest")
+    runner_MOFA_MINER <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretationV2:latest")
     
     runner_MOFA_MINER(
       command = "Rscript",
@@ -697,7 +697,7 @@ if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGR
   if (!is_in_docker) {
     source(paste(directory,"/Integration/BiomiX_PUBMED.R",sep=""))
   } else {
-    runner_PUBMED <- generateRunnerFunction("biomix-interpretationV2:latest")
+    runner_PUBMED <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretationV2:latest")
     
     runner_PUBMED(
       command = "Rscript",
