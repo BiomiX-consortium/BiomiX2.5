@@ -18,7 +18,7 @@
 #' @export
 #### UNDEFINED FUNCTION
 
-Undefined_processing <-function(matrix){
+Undefined_processing <-function(matrix,mer){
   x<- as.data.frame(colnames(matrix))
   
   matrix <- matrix %>% filter(CONDITION == args[2] | CONDITION == args[1]) #Args[1] = Control condition name/  args[2] = Disease condition name
@@ -44,7 +44,7 @@ Undefined_processing <-function(matrix){
 
 #### METABOLOMICS FUNCTION
 
-Metabolomics_processing <-function(annotation,matrix){
+Metabolomics_processing <-function(annotation,matrix,mer){
   #matrix[,-1:-2]<- apply(matrix[,-1:-2],2,log)
   annotation <- annotation %>% distinct(NAME.x, .keep_all = TRUE)
   annotation$NAMES <- paste(annotation$NAME.x, annotation$Name,sep = "/")
@@ -88,11 +88,11 @@ Metabolomics_processing <-function(annotation,matrix){
 #### TRANSCRIPTOMIC FUNCTION
 
 
-Transcriptomics_processing <-function(annotation,matrix, Max_features_SNF){
+Transcriptomics_processing <-function(annotation,matrix,mer){
   list <-list()
   matrix<-merge(matrix, MART, by.x="ID", by.y="Gene.stable.ID")
   matrix<- matrix %>% arrange(desc(variance))
-  matrix <-matrix[1:Max_features_SNF,]
+  matrix <-matrix[1:Max_features,]
   
   Bcell_RNAseq_EASY <- paste(matrix$`Gene name`, matrix$`Gene.name`, sep = "/")
   Bcell_RNAseq_VIEW <- as.character(matrix$`Gene name`)
@@ -115,11 +115,11 @@ Transcriptomics_processing <-function(annotation,matrix, Max_features_SNF){
 #### METHYLOMICS FUNCTION
 
 
-Methylomics_processing <-function(annotation,matrix,metadata, Max_features_SNF){
+Methylomics_processing <-function(annotation,matrix,metadata,mer){
   annotation <- annotation[,c("gene","CpG_island")]
   matrix<-merge(matrix, annotation, by.x="ID", by.y="CpG_island")
   
-  matrix <-matrix[1:Max_features_SNF,]
+  matrix <-matrix[1:Max_features,]
   
   Methylome_WB_VIEW <- as.character(matrix$gene)
   Methylome_WB_EASY <- paste(matrix$ID, matrix$gene, sep = "/")

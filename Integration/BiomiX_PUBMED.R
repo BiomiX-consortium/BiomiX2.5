@@ -1,19 +1,4 @@
-
-
-
-# MANUAL INPUT
-# # #
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"RA"
-# args[2] <-"CTRL"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# directory <- unlist(args[3])
-# Cell_type <- "MOFA_INTEGRATION"
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-
 options(timeout = 6000)
-
-
 
 library(vroom)
 library(dplyr)
@@ -23,11 +8,52 @@ library(stringr)
 library(rentrez)
 library(litsearchr)
 
+# Optional: if an NCBI API key is available (via env var), use it to raise
+# the rate limit from 3 to 10 requests/sec — reduces the "partial file"
+# errors under load. Entirely optional: works fine without it.
+ncbi_key <- Sys.getenv("NCBI_API_KEY", unset = "")
+if (nchar(ncbi_key) > 0) {
+  rentrez::set_entrez_key(ncbi_key)
+  message("NCBI API key detected — using elevated rate limit.")
+} else {
+  message("No NCBI API key set — using default rate limit (3 req/sec).")
+}
 
-COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
+#### STANDALONE ENTRY POINT (only when NOT source()'d) ----
+#
+# Invocation (Docker mode, via runner_PUBMED in BiomiX_BETA.r):
+#   Rscript BiomiX_PUBMED.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>
+
+if (!exists("Cell_type") || !exists("COMMAND")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 6) {
+    stop("Usage: Rscript BiomiX_PUBMED.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
+  }
+  
+  directory  <- cli_args[1]
+  args       <- c(cli_args[3], cli_args[4])
+  shared_dir <- cli_args[5]
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  # site_lib <- "/usr/local/lib/R/site-library"
+  # if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+  #   .libPaths(c(.libPaths(), site_lib))
+  # }
+  
+  combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
+  COMMAND <- combined_json[["COMMANDS"]]
+  COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+  COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
+  
+} else {
+  # Local/sourced case: everything already exists from BiomiX_BETA.r.
+  if (!exists("shared_dir")) shared_dir <- directory
+  directory <- unlist(args[[3]])
+}
+
 ANNOTATION_LIPIDS <- vroom(paste(directory,"Integration/x_BiomiX_DATABASE/METABOLOMICS_ANNOTATION_PUBMED.txt",sep="/"), delim = "\t",col_names = FALSE )
-COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
 Cell_type <- as.character(COMMAND_MOFA[1,2])
 
 VOCABOLARY <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/Factor_names_selection/REA_HPO_vocabolary.txt",sep=""), delim = "\t", col_names = FALSE)
@@ -37,7 +63,6 @@ TYPE_OF_RESEARCH <- as.character(COMMAND_ADVANCED[1,10])   #Text Word  #"Title/A
 retmaxi <- as.numeric(COMMAND_ADVANCED[2,10])  
 n_top_contributors_pubmed = as.numeric(COMMAND_ADVANCED[1,22])
 n_keywords_generated = as.numeric(COMMAND_ADVANCED[2,22])
-
 
 #DEBUGGING SECTION
 #########################################################################################
@@ -68,6 +93,23 @@ fetch_abstract <- function(pubIDs, max_retries = 5) {
 }
 
 
+fetch_with_retry <- function(fetch_call, max_retries = 5, wait_seconds = 5) {
+  retries <- 0
+  while (retries < max_retries) {
+    retries <- retries + 1
+    result <- tryCatch({
+      fetch_call()
+    }, error = function(err) {
+      message(paste("PubMed fetch attempt", retries, "failed. Error:", conditionMessage(err)))
+      Sys.sleep(wait_seconds)
+      NULL
+    })
+    if (!is.null(result)) return(result)
+  }
+  message("Max retries reached for PubMed fetch.")
+  return(NULL)
+}
+
 #########################################################################################
 
 # Function to retrieve keywords from PubMed given a PMID
@@ -94,7 +136,7 @@ for (pubID in uu$Pubmed_ID) {
         #pubmed_record <- entrez_fetch(db = "pubmed", id = pubID, rettype = "abstract", retmode = "text")
         pubmed_record<- fetch_abstract(pubID)
         print(pubID)
-        print(pubmed_record)
+        #print(pubmed_record)
         pubmed_record <- gsub("\n", "", pubmed_record)
         #print(pubmed_record)
         
@@ -294,75 +336,75 @@ count_match_in_top_article <- function(nami) {
         ids <- esearch$ids
         
         if(length(ids) != 0){
-                
-                columns_tot<-unique(columns_tot[!is.na(columns_tot)])
-                word_match<-matrix(data=NA,nrow=1,ncol=length(columns_tot) + 3)
-                
-                
-                # Iterate over each article and check for a match with the words
-
-                efetch <- entrez_fetch(db = "pubmed", web_history = esearch$web_history, rettype = "abstract", retmode = "xml")        
-                parsed_xml <- read_xml(efetch)
-                
-                #Remove comments/errantum
-                nodes_to_remove <- xml_find_all(parsed_xml, "//CommentsCorrectionsList/CommentsCorrections/PMID")
-                xml_remove(nodes_to_remove)
-                nodes <- xml_text(nodes_to_remove)
-                #nodes
-                
-                articles <- xml_find_all(parsed_xml, "//PubmedArticle")
-                
-                if (retmaxi > length(articles)) {
-                        articles<-articles
-                }else{
-                        articles<-articles[1:retmaxi]}
-                
-                
-                fu<-function(article) {
-                        pmid_node <- xml_find_first(article, ".//PMID")
-                        pmid_abstract <- xml_find_first(article, ".//Abstract")
-                        pmid_doi <- xml_find_first(article, ".//ArticleId[@IdType='doi']")
-                        pmid_key <- xml_find_all(article, ".//Keyword")
-                        id <-xml_text(pmid_node)
-                        doi <-xml_text(pmid_doi)
-                        article_abstract<- xml_text(pmid_abstract)
-                        article_abstract <- gsub("\\(", "", article_abstract)
-                        article_abstract <- gsub("\\)", "", article_abstract)
-                        text<-unlist(strsplit(article_abstract, " "))
-                        #print(article_abstract)
-                        
-                        keywords<-xml_text(pmid_key)
-                        keywords <- paste(keywords, collapse = "/")
-                        #print(keywords)
-                        print(doi)
-                        
-                        # Define the list of words you want to count
-                        #word_list <- columns_tot
-                        
-                        #New version
-                        escape_regex <- function(x) {
-                          # escape the main regex metacharacters
-                          gsub("([\\^$.|?*+()\\[\\]{}\\\\])", "\\\\\\1", x, perl = TRUE)
-                        }
-                        word_list <- escape_regex(columns_tot)
-                        
-                        # Count the occurrences of the words in the text string
-                        occurrences <- count_word_occurrences(text, word_list)
-                        occurrences <- c(occurrences, id, keywords, doi)
-                        #print(occurrences)
-                        #print(rbind(occurrences,word_match))
-                        #word_match<-rbind(occurrences,word_match)
-                        return(occurrences)
-                }
-                
-                # Extract PMID for each article
-                pmids <- sapply(articles,fu)        
-                word_match<-as.data.frame(t(pmids))
-                colnames(word_match) <- c(columns_tot,"Pubmed_ID","Keywords", "DOI")
-                        
-        }else{
-                word_match = matrix()
-}
+          
+          columns_tot<-unique(columns_tot[!is.na(columns_tot)])
+          word_match<-matrix(data=NA,nrow=1,ncol=length(columns_tot) + 3)
+          
+          
+          # Iterate over each article and check for a match with the words
+          
+          efetch <- fetch_with_retry(function() {
+            entrez_fetch(db = "pubmed", web_history = esearch$web_history, rettype = "abstract", retmode = "xml")
+          })                                                                       # chiude fetch_with_retry(function(){...})
+          
+          if (is.null(efetch)) {
+            message("Skipping this batch: PubMed unreachable after retries.")
+            word_match = matrix()
+          } else {
+            parsed_xml <- read_xml(efetch)
+            
+            #Remove comments/errantum
+            nodes_to_remove <- xml_find_all(parsed_xml, "//CommentsCorrectionsList/CommentsCorrections/PMID")
+            xml_remove(nodes_to_remove)
+            nodes <- xml_text(nodes_to_remove)
+            #nodes
+            
+            articles <- xml_find_all(parsed_xml, "//PubmedArticle")
+            
+            if (retmaxi > length(articles)) {
+              articles<-articles
+            }else{
+              articles<-articles[1:retmaxi]}
+            
+            
+            fu<-function(article) {
+              pmid_node <- xml_find_first(article, ".//PMID")
+              pmid_abstract <- xml_find_first(article, ".//Abstract")
+              pmid_doi <- xml_find_first(article, ".//ArticleId[@IdType='doi']")
+              pmid_key <- xml_find_all(article, ".//Keyword")
+              id <-xml_text(pmid_node)
+              doi <-xml_text(pmid_doi)
+              article_abstract<- xml_text(pmid_abstract)
+              article_abstract <- gsub("\\(", "", article_abstract)
+              article_abstract <- gsub("\\)", "", article_abstract)
+              text<-unlist(strsplit(article_abstract, " "))
+              #print(article_abstract)
+              
+              keywords<-xml_text(pmid_key)
+              keywords <- paste(keywords, collapse = "/")
+              #print(keywords)
+              print(doi)
+              
+              #New version
+              escape_regex <- function(x) {
+                gsub("([\\^$.|?*+()\\[\\]{}\\\\])", "\\\\\\1", x, perl = TRUE)
+              }                                                        # chiude function(x)
+              word_list <- escape_regex(columns_tot)
+              
+              occurrences <- count_word_occurrences(text, word_list)
+              occurrences <- c(occurrences, id, keywords, doi)
+              return(occurrences)
+            }                                                                # chiude fu <- function(article)
+            
+            # Extract PMID for each article
+            pmids <- sapply(articles,fu)        
+            word_match<-as.data.frame(t(pmids))
+            colnames(word_match) <- c(columns_tot,"Pubmed_ID","Keywords", "DOI")
+          }                                                                        # <-- chiude "} else {" (il nostro blocco nuovo)
+          
+        }else{                                                                            # <-- questo è l'ORIGINALE "if(length(ids) != 0)"
+          word_match = matrix()
+        }
                 
                 
                 if (ncol(word_match) > 1) {
@@ -395,11 +437,10 @@ count_match_in_top_article <- function(nami) {
         
         
 if (Cell_type == "MOFA_INTEGRATION"){
-  files_tot <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
+  files_tot <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(shared_dir,"/Integration/OUTPUT/",sep="")),value=TRUE)
 }else if(Cell_type == "DIABLO_INTEGRATION"){
-  files_tot <- grep(paste("DIABLO", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
+  files_tot <- grep(paste("DIABLO", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(shared_dir,"/Integration/OUTPUT/",sep="")),value=TRUE)
 }
-directory <- args[[3]]
 
 ######
 # fil <- files_tot[1]
@@ -407,18 +448,15 @@ directory <- args[[3]]
 #####
 
 for (fil in files_tot){
-print(paste("folder analyzed:", fil))
-
-MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
-myList <- list()
-
-COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
-
-dir.create(path = paste(directory,"/Integration/OUTPUT/",fil, "/Factors_Associated_Articles" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-directory2 <- paste(directory,"/Integration/OUTPUT/",fil,sep="") 
-directory3 <- paste(directory,"/Integration/OUTPUT/",fil, "/Factors_Associated_Articles" ,sep="")
-setwd(directory2)
+  print(paste("folder analyzed:", fil))
+  
+  MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
+  myList <- list()
+  
+  dir.create(path = paste(shared_dir,"/Integration/OUTPUT/",fil, "/Factors_Associated_Articles" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+  directory2 <- paste(shared_dir,"/Integration/OUTPUT/",fil,sep="") 
+  directory3 <- paste(shared_dir,"/Integration/OUTPUT/",fil, "/Factors_Associated_Articles" ,sep="")
+  setwd(directory2)
 
 
 #detection total significant factors
@@ -482,7 +520,6 @@ write("no_results",file=paste(directory3, "/", "Factor_", numb, "_articles.tsv",
 
 #####BLOCK RESEARCH QUERY OMICS PAIRS TOGETHER ####
 #TRASCRIPTOMICS-METABOLOMICS
-print("TRANSCRIPTOMICS-METABOLOMICS")
 files <- grep(paste("*factor_", numb, sep=""),list.files(directory2),value=TRUE)
 
 # Patterns to check for

@@ -724,7 +724,7 @@ server <- function(input, output, session) {
       )
     }, error = function(e) {
       showNotification(
-        paste0("Error writing JSON: ", e$message),
+        paste0("Error writing JSON: ", e$message, " \n If running locally without docker, ignore this message"),
         type = "error", duration = 8
       )
       return()

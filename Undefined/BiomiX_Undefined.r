@@ -30,7 +30,7 @@ setwd(directory)
 
 library(jsonlite)
 library(tidyverse)
-combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
 
 COMMAND <- combined_json[["COMMANDS"]]
 COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
@@ -74,8 +74,8 @@ colnames(matrix) <-c("ID",pea)
 
 
 #create directory
-dir.create(path = paste(directory,"/Integration/INPUT/", "Undefined_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-directory2 <- paste(directory, "/Integration/INPUT/", "Undefined_", Cell_type,  "_",args[1],"_vs_", args[2], sep ="")
+dir.create(path = paste(shared_dir,"/Integration/INPUT/", "Undefined_", Cell_type, "_",args[1],"_vs_", args[2], sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+directory2 <- paste(shared_dir, "/Integration/INPUT/", "Undefined_", Cell_type,  "_",args[1],"_vs_", args[2], sep ="")
 
 setwd(directory2)
 
@@ -211,12 +211,8 @@ gc()
 
 #Saving results
         
-run_differential_analysis(TEST, matrix, Metadata, directory, Cell_type, args, padju, LogFC)
+run_differential_analysis(TEST, matrix, Metadata, shared_dir, Cell_type, args, padju, LogFC)        
         
-        
-        ###  HEATMAP ###
-        
-run_differential_analysis(TEST, matrix, Metadata, directory, Cell_type, args, padju, LogFC)
 
         
 }else{

@@ -405,10 +405,10 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_metabolomics <- generateRunnerFunction("biomix-methylomics-test:latest")
+      runner_methylomics <- generateRunnerFunction("biomix-methylomics-test:latest")
       
       
-      runner_metabolomics(
+      runner_methylomics(
         command = "Rscript",
         args    = c(
           paste0(directory, "/Methylomics/BiomiX_DMA.r"),
@@ -474,32 +474,68 @@ old_comp <-  Sys.time() # calculate time computation
 
 if(COMMAND_MOFA[2,2] == "YES") {
   
-  
-  
   if(COMMAND_MOFA[1,2] == "MOFA_INTEGRATION") {        
     
     
-    if(COMMAND_MOFA[3,2] == 0) {
-      
-      cat(paste( "\n\n\n\n\nStarting the AUTOMATIC MOFA analysis \n\n\n\n\n", sep =""))
-      Sys.sleep(5)
-      source(paste(directory,"/integration/MOFA_MULTI2_AUTO.R",sep=""))
-      cat("\n\n\n\n\n AUTOMATIC MOFA analysis complete ^-^")
-      
-    }else{
-      
       cat(paste( "\n\n\n\n\nStarting the MOFA analysis \n\n\n\n\n", sep =""))
       Sys.sleep(5)
-      source(paste(directory,"/integration/MOFA_MULTI2.R",sep=""))
+      
+      if (!is_in_docker) {
+        # --- Caso locale: comportamento originale, invariato ---
+        source(paste(directory,"/Integration/MOFA_MULTI2_AUTO.R",sep=""))
+      } else {
+        # --- Caso Docker: delega al container fratello ---
+        #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+        runner_MOFA <- generateRunnerFunction("biomix-mofa-test:latest")
+        
+        runner_MOFA(
+          command = "Rscript",
+          args    = c(
+            paste0(directory, "/Integration/MOFA_MULTI2_AUTO.R"),
+            directory,
+            args[[1]],
+            args[[2]],
+            shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+            iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+            
+            
+          )
+        )
+        
+      }
+
       cat("\n\n\n\n\n MOFA analysis complete ^-^")
-    }
     
   }
+  
   if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION") {
     
     cat(paste( "\n\n\n\n\nStarting the DIABLO analysis \n\n\n\n\n", sep =""))
     Sys.sleep(5)
-    source(paste(directory,"/integration/DIABLO_MULTI2.R",sep=""))
+    if (!is_in_docker) {
+      # --- Caso locale: comportamento originale, invariato ---
+      source(paste(directory,"/Integration/DIABLO_MULTI2.R",sep=""))
+    } else {
+      # --- Caso Docker: delega al container fratello ---
+      #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+      runner_DIABLO <- generateRunnerFunction("biomix-mofa-test:latest")
+      
+      runner_DIABLO(
+        command = "Rscript",
+        args    = c(
+          paste0(directory, "/Integration/DIABLO_MULTI2.R"),
+          directory,
+          Cell_type,
+          args[[1]],
+          args[[2]],
+          shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+          iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+          
+          
+        )
+      )
+    }
+    #source(paste(directory,"/integration/DIABLO_MULTI2.R",sep=""))
     cat("\n\n\n\n\n DIABLO analysis complete ^-^")
     
   }
@@ -508,7 +544,30 @@ if(COMMAND_MOFA[2,2] == "YES") {
     
     cat(paste( "\n\n\n\n\nStarting the SNF analysis \n\n\n\n\n", sep =""))
     Sys.sleep(5)
-    source(paste(directory,"/integration/SNF_int.R",sep=""))
+    if (!is_in_docker) {
+      # --- Caso locale: comportamento originale, invariato ---
+      source(paste(directory,"/Integration/SNF_int.R",sep=""))
+    } else {
+      # --- Caso Docker: delega al container fratello ---
+      #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+      runner_SNF <- generateRunnerFunction("biomix-snf-nemo:latest")
+      
+      runner_SNF(
+        command = "Rscript",
+        args    = c(
+          paste0(directory, "/Integration/SNF_int.R"),
+          directory,
+          Cell_type,
+          args[[1]],
+          args[[2]],
+          shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+          iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+          
+          
+        )
+      )
+    }
+    #source(paste(directory,"/integration/SNF_int.R",sep=""))
     cat("\n\n\n\n\n SNF analysis complete ^-^")
     
   }
@@ -517,7 +576,32 @@ if(COMMAND_MOFA[2,2] == "YES") {
     
     cat(paste( "\n\n\n\n\nStarting the NEMO analysis \n\n\n\n\n", sep =""))
     Sys.sleep(5)
-    source(paste(directory,"/integration/NEMO_int.R",sep=""))
+    
+    if (!is_in_docker) {
+      # --- Caso locale: comportamento originale, invariato ---
+      source(paste(directory,"/Integration/NEMO_int.R",sep=""))
+    } else {
+      # --- Caso Docker: delega al container fratello ---
+      #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+      runner_NEMO <- generateRunnerFunction("biomix-snf-nemo:latest")
+      
+      runner_NEMO(
+        command = "Rscript",
+        args    = c(
+          paste0(directory, "/Integration/NEMO_int.R"),
+          directory,
+          Cell_type,
+          args[[1]],
+          args[[2]],
+          shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+          iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+          
+          
+        )
+      )
+    }
+    
+    #source(paste(directory,"/integration/NEMO_int.R",sep=""))
     cat("\n\n\n\n\n NEMO analysis complete ^-^")
     
   }
@@ -529,12 +613,40 @@ time_comput <-  Sys.time() - old_comp # calculate difference
 
 #================================================================================
 
-cat(paste( "\n\n\n\n\nStarting the integrated factors correlation vs clinical factors \n\n\n\n\n", sep =""))
-
 #Sys.sleep(5)
 
 if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGRATION" & COMMAND_MOFA[2,2] == "YES") {
-  source(paste(directory,"/Clinical_data/BiomiX_Clinical.R",sep=""))
+  
+  cat(paste( "\n\n\n\n\nStarting the integrated factors correlation vs clinical factors \n\n\n\n\n", sep =""))
+  
+  
+  
+  
+  if (!is_in_docker) {
+    # --- Caso locale: comportamento originale, invariato ---
+    source(paste(directory,"/Clinical_data/BiomiX_Clinical.R",sep=""))
+  } else {
+    # --- Caso Docker: delega al container fratello ---
+    #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
+    runner_Interpretation <- generateRunnerFunction("biomix-interpretation:latest")
+    
+    runner_Interpretation(
+      command = "Rscript",
+      args    = c(
+        paste0(directory, "/Clinical_data/BiomiX_Clinical.R"),
+        directory,
+        Cell_type,
+        args[[1]],
+        args[[2]],
+        shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
+        iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
+        
+        
+      )
+    )
+  }
+  
+  #source(paste(directory,"/Clinical_data/BiomiX_Clinical.R",sep=""))
   cat("\n\n\n\n\n integrated factors correlation vs clinical factors completed ^-^")
 }
 
@@ -542,49 +654,91 @@ if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGR
 
 #================================================================================
 
-cat(paste( "\n\n\n\n\nStarting the integrated factors articles matching \n\n\n\n\n", sep =""))
+#Sys.sleep(5)
+
+if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGRATION" & COMMAND_MOFA[2,2] == "YES") {
+  
+  cat(paste( "\n\n\n\n\nStarting the integrated factors pathway analysis \n\n\n\n\n", sep =""))
+  
+  if (!is_in_docker) {
+    source(paste(directory,"/Integration/BiomiX_MOFA_MINER.R",sep=""))
+  } else {
+    runner_MOFA_MINER <- generateRunnerFunction("biomix-interpretation:latest")
+    
+    runner_MOFA_MINER(
+      command = "Rscript",
+      args    = c(
+        paste0(directory, "/Integration/BiomiX_MOFA_MINER.R"),
+        directory,
+        Cell_type,
+        args[[1]],
+        args[[2]],
+        shared_dir,
+        iterations
+      )
+    )
+  }
+  
+  cat("\n\n\n\n\n integrated factors pathway analysis completed ^-^")
+}
+
+
+#================================================================================
+
+
 
 #Sys.sleep(5)
 
 if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGRATION" & COMMAND_MOFA[2,2] == "YES") {
-  source(paste(directory,"/integration/BiomiX_PUBMED.R",sep=""))
+  
+  
+  cat(paste( "\n\n\n\n\nStarting the integrated factors articles matching \n\n\n\n\n", sep =""))
+  
+  if (!is_in_docker) {
+    source(paste(directory,"/Integration/BiomiX_PUBMED.R",sep=""))
+  } else {
+    runner_PUBMED <- generateRunnerFunction("biomix-interpretation:latest")
+    
+    runner_PUBMED(
+      command = "Rscript",
+      args    = c(
+        paste0(directory, "/Integration/BiomiX_PUBMED.R"),
+        directory,
+        Cell_type,
+        args[[1]],
+        args[[2]],
+        shared_dir,
+        iterations
+      )
+    )
+  }
+  
   cat("\n\n\n\n\n integrated factors articles matching completed ^-^")
 }
 
 
 #================================================================================
 
-cat(paste( "\n\n\n\n\nStarting the integrated factors pathway analysis \n\n\n\n\n", sep =""))
 
-#Sys.sleep(5)
-
-if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGRATION" & COMMAND_MOFA[2,2] == "YES") {
-  source(paste(directory,"/integration/BiomiX_MOFA_MINER.R",sep=""))
-  cat("\n\n\n\n\n integrated factors pathway analysis completed ^-^")
-}
-
-
-#================================================================================
 #args[1] = "ICPLUS"
-
 cat(paste( "\n\n\n\n\n Saving the files in the directory \n\n\n\n\n", sep =""))
 
 Sys.sleep(5)
 
-#directory2 <- paste(directory, "/",COMMAND$DATA_TYPE[1], "/OUTPUT/",COMMAND$LABEL[1], "_",args[1], "_vs_", args[2], sep ="")
+#directory2 <- paste(shared_dir, "/",COMMAND$DATA_TYPE[1], "/OUTPUT/",COMMAND$LABEL[1], "_",args[1], "_vs_", args[2], sep ="")
 #print(directory2)
 #setwd(directory2)
 
 #COPY OMICS DIRECTORY
 
-if (directory != args[3]){
+if (shared_dir != DIR_METADATA_output){
   
   for(output in 1:length(na.omit(COMMAND$LABEL))) {
     print(output)
-    print(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))
-    if(file.exists(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))){
+    print(paste(shared_dir,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))
+    if(file.exists(paste(shared_dir,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))){
       dir.create(path =  paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-      file.copy(paste(directory,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""), paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
+      file.copy(paste(shared_dir,"/",COMMAND$DATA_TYPE[output], "/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""), paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
       print(paste(DIR_METADATA_output,"/",COMMAND$DATA_TYPE[output],"/OUTPUT/",COMMAND$LABEL[output], "_",args[1], "_vs_", args[2], sep =""))
     }
   }
@@ -592,30 +746,30 @@ if (directory != args[3]){
   if(COMMAND_MOFA[2,2] == "YES") {
     
     #COPY MOFA FILES
-    output<-list.files(path = paste(directory,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","AUTOMATIC_SEARCH_BEST_FACTORS_",args[1], "_vs_", args[2], sep=""))
-    if(file.exists(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""))){
+    output<-list.files(path = paste(shared_dir,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","AUTOMATIC_SEARCH_BEST_FACTORS_",args[1], "_vs_", args[2], sep=""))
+    if(file.exists(paste(shared_dir,"/","MOFA", "/OUTPUT/",output, sep =""))){
       dir.create(path =  paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-      file.copy(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = FALSE, copy.mode = TRUE) 
+      file.copy(paste(shared_dir,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = FALSE, copy.mode = TRUE) 
       print(paste(output,"copied", sep = " "))
     }
     
     #COPY MOFA DIRECTORY
-    file_to_transfer<-dir(path = paste(directory,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","MOFA_",args[1], "_vs_", args[2], sep="") )
+    file_to_transfer<-dir(path = paste(shared_dir,"/","MOFA", "/OUTPUT/",sep =""), pattern = paste("^","MOFA_",args[1], "_vs_", args[2], sep="") )
     for(output in file_to_transfer){
-      if(file.exists(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""))){
+      if(file.exists(paste(shared_dir,"/","MOFA", "/OUTPUT/",output, sep =""))){
         dir.create(path =  paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        file.copy(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
-        #unlink(paste(directory,"/","MOFA", "/OUTPUT/",output, sep =""), recursive=TRUE)
+        file.copy(paste(shared_dir,"/","MOFA", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","MOFA","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
+        #unlink(paste(shared_dir,"/","MOFA", "/OUTPUT/",output, sep =""), recursive=TRUE)
         print(paste(output,"copied", sep = " "))
       }}
     
     if(COMMAND_ADVANCED[1,12] == "YES" | COMMAND_ADVANCED[2,12]  == "YES") {
       
-      output<-dir(path = paste(directory,"/","Clinical_data", "/OUTPUT/",sep =""), pattern = paste("^","Clinical_",args[1], "_vs_", args[2], sep="") )
-      if(file.exists(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""))){
+      output<-dir(path = paste(shared_dir,"/","Clinical_data", "/OUTPUT/",sep =""), pattern = paste("^","Clinical_",args[1], "_vs_", args[2], sep="") )
+      if(file.exists(paste(shared_dir,"/","Clinical_data", "/OUTPUT/",output, sep =""))){
         dir.create(path =  paste(DIR_METADATA_output,"/","Clinical_data","/OUTPUT/", sep ="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        file.copy(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","Clinical_data","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
-        #unlink(paste(directory,"/","Clinical_data", "/OUTPUT/",output, sep =""), recursive=TRUE)
+        file.copy(paste(shared_dir,"/","Clinical_data", "/OUTPUT/",output, sep =""), paste(DIR_METADATA_output,"/","Clinical_data","/OUTPUT/", sep =""), overwrite = TRUE, recursive = TRUE, copy.mode = TRUE) 
+        #unlink(paste(shared_dir,"/","Clinical_data", "/OUTPUT/",output, sep =""), recursive=TRUE)
         print(paste(output,"copied", sep = " "))
       }
     }
@@ -623,7 +777,6 @@ if (directory != args[3]){
 }
 
 cat("\n\n\n\n\n file saving complete ^-^")
-
 
 
 # ---------- HELPERS ----------
@@ -783,7 +936,7 @@ matr_5 <- make_param_table(
 
 # ---------- OUTPUT DIRECTORY ----------
 
-dir_out <- file.path(directory, "Report_parameters")
+dir_out <- file.path(shared_dir, "Report_parameters")
 dir.create(dir_out, showWarnings = FALSE, recursive = TRUE)
 
 

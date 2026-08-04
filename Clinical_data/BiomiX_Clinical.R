@@ -1,59 +1,86 @@
 #ADD THE CORRELATION ANALYSIS WITH CLINICAL DATA
 
-
-# MANUAL INPUT
-# # #
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"C1"
-# args[2] <-"C2"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# #
-# directory <- unlist(args[3])
-# Cell_type <- "MOFA_INTEGRATION"
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-
 library(dplyr)
 library(tidyverse)
 library(vroom)
 library(readxl)
 
+#### STANDALONE ENTRY POINT (only when NOT source()'d) ----
+#
+# Invocation (Docker mode, via runner_Clinical in BiomiX_BETA.r):
+#   Rscript BiomiX_Clinical.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>
 
-setwd(directory)
-combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+if (!exists("Cell_type") || !exists("COMMAND")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 6) {
+    stop("Usage: Rscript BiomiX_Clinical.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
+  }
+  
+  directory  <- cli_args[1]
+  args       <- c(cli_args[3], cli_args[4])
+  shared_dir <- cli_args[5]
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  # site_lib <- "/usr/local/lib/R/site-library"
+  # if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+  #   .libPaths(c(.libPaths(), site_lib))
+  # }
+  
+} else {
+  # Local/sourced case: `directory` and 3-element `args` already exist from
+  # BiomiX_BETA.r.
+  if (!exists("shared_dir")) shared_dir <- directory
+  directory <- unlist(args[[3]])
+}
 
 
+
+print(paste("exists directory:", exists("directory")))
+print(paste("exists args:", exists("args")))
+print(paste("exists Cell_type:", exists("Cell_type")))
+print(paste("exists COMMAND:", exists("COMMAND")))
+print(paste("exists shared_dir:", exists("shared_dir")))
+if (exists("directory")) print(paste("directory =", directory))
+if (exists("args")) print(args)
+
+
+
+
+combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
+
+COMMAND <- combined_json[["COMMANDS"]]
 COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
 COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
 
 print(COMMAND_MOFA)
 
-
 Cell_type <- COMMAND_MOFA[1,2]
 print(paste("MODE SELECTED:",Cell_type) )
-
 
 NUMERICAL_AVAILABLE = as.character(COMMAND_ADVANCED[1,12]) 
 BINARY_AVAILABLE = as.character(COMMAND_ADVANCED[2,12]) 
 
 if (Cell_type == "MOFA_INTEGRATION"){
-  files <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
+  files <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(shared_dir,"/Integration/OUTPUT/",sep="")),value=TRUE)
 }else if(Cell_type == "DIABLO_INTEGRATION"){
-  files <- grep(paste("DIABLO", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
+  files <- grep(paste("DIABLO", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(shared_dir,"/Integration/OUTPUT/",sep="")),value=TRUE)
   
 }
-
-directory <- unlist(args[[3]])
-Cell_type == COMMAND_MOFA[1,2]
 
 print(Cell_type)
 print(Cell_type == "MOFA_INTEGRATION")
 print(files)
 
+
+
 for (fil in files){
 
-directory3 <- paste(directory,"/Integration/OUTPUT/",fil,sep="") 
+directory3 <- paste(shared_dir,"/Integration/OUTPUT/",fil,sep="") 
 print(directory3)
-print(directory)
+print(shared_dir)
+dir.create(directory3, recursive = TRUE, showWarnings = FALSE)
 setwd(directory3)
 print(directory3)
 
@@ -92,7 +119,8 @@ factors<-unique(as.numeric(factors[!is.na(as.numeric(factors))]))
 
 #upload data
 
-directory2 <- paste(directory,"/Clinical_data/INPUT",sep="")
+directory2 <- paste(shared_dir,"/Clinical_data/INPUT",sep="")
+dir.create(directory2, recursive = TRUE, showWarnings = FALSE)
 setwd(directory2)
 
 
@@ -107,8 +135,8 @@ if(NUMERICAL_AVAILABLE == "YES"){
         
 
 
-dir.create(path = paste(directory,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-directory2 <- paste(directory,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") 
+dir.create(path = paste(shared_dir,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+directory2 <- paste(shared_dir,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") 
 setwd(directory2)
 
 commons<-intersect(NUMERICAL$ID, FACTORS_WEIGHTS$ID)
@@ -162,18 +190,19 @@ for (fact in c(factors * multiplier)){
         
         if (Cell_type == "MOFA_INTEGRATION"){
           write.table(Results, paste("Correlation_NUMERIC_clinical_data_vs_MOFA_factor_",fact,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
-          dir.create(path = paste(directory,"/Integration/OUTPUT/",fil,"/Clinical_correlation", sep="")  ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-          write.table(Results, paste(directory,"/Integration/OUTPUT/",fil,"/Clinical_correlation/Correlation_NUMERIC_clinical_data_vs_MOFA_factor_",fact,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+          dir.create(path = paste(shared_dir,"/Integration/OUTPUT/",fil,"/Clinical_correlation", sep="")  ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+          write.table(Results, paste(shared_dir,"/Integration/OUTPUT/",fil,"/Clinical_correlation/Correlation_NUMERIC_clinical_data_vs_MOFA_factor_",fact,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
         }else if(Cell_type == "DIABLO_INTEGRATION"){
           write.table(Results, paste("Correlation_NUMERIC_clinical_data_vs_MOFA_factor_",colnames(FACTORS_WEIGHTS)[fact + 1],".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
-          dir.create(path = paste(directory,"/Integration/OUTPUT/",fil,"/Clinical_correlation", sep="")  ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-          write.table(Results, paste(directory,"/Integration/OUTPUT/",fil,"/Clinical_correlation/Correlation_NUMERIC_clinical_data_vs_MOFA_factor_",colnames(FACTORS_WEIGHTS)[fact + 1],".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+          dir.create(path = paste(shared_dir,"/Integration/OUTPUT/",fil,"/Clinical_correlation", sep="")  ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+          write.table(Results, paste(shared_dir,"/Integration/OUTPUT/",fil,"/Clinical_correlation/Correlation_NUMERIC_clinical_data_vs_MOFA_factor_",colnames(FACTORS_WEIGHTS)[fact + 1],".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
         }
         
 }
 
 
-directory2 <- paste(directory,"/Clinical_data/INPUT",sep="")
+directory2 <- paste(shared_dir,"/Clinical_data/INPUT",sep="")
+dir.create(directory2, recursive = TRUE, showWarnings = FALSE)
 setwd(directory2)
 
 }
@@ -187,8 +216,8 @@ if(BINARY_AVAILABLE == "YES"){
         }else{
                 BINARY <-vroom(COMMAND_ADVANCED$ADVANCED_OPTION_CLINIC_DATA_DIRECTORY[2], delim = "\t", col_names = TRUE)}
 
-dir.create(path = paste(directory,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-directory2 <- paste(directory,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") 
+dir.create(path = paste(shared_dir,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+directory2 <- paste(shared_dir,"/Clinical_data/OUTPUT/","Clinical", "_", args[1] ,"_vs_", args[2], "_",as.numeric(COMMAND_MOFA[3,2]),"_factors" ,sep="") 
 setwd(directory2)
 
 commons<-intersect(BINARY$ID, FACTORS_WEIGHTS$ID)
@@ -258,8 +287,8 @@ for (fact in c(factors * multiplier)){
         sum<-rbind(outsa_2,sum)
 
         write.table(sum, paste("Correlation_BINARY_clinical_data_vs_MOFA_factor_",fact,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
-        dir.create(path = paste(directory,"/Integration/OUTPUT/",fil,"/Clinical_correlation", sep="")  ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-        write.table(sum, paste(directory,"/Integration/OUTPUT/",fil,"/Clinical_correlation/Correlation_BINARY_clinical_data_vs_MOFA_factor_",fact,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+        dir.create(path = paste(shared_dir,"/Integration/OUTPUT/",fil,"/Clinical_correlation", sep="")  ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+        write.table(sum, paste(shared_dir,"/Integration/OUTPUT/",fil,"/Clinical_correlation/Correlation_BINARY_clinical_data_vs_MOFA_factor_",fact,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
 }
 }
 }else{

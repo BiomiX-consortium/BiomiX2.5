@@ -1,15 +1,6 @@
 # Code to integrate data using SNF and evaluate the clustering results
 # Author: Jessica Gliozzo
 
-# # #MANUAL INPUT
-# args = as.list(c("BLymphocytes","SLE"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-
-# directory <-args[3]
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-
 # Load libraries----
 library("dplyr");
 library("pheatmap");
@@ -33,29 +24,89 @@ library("RColorBrewer");
 library("vroom");
 library("rlist");
 library("readxl");
+library("jsonlite")
+library("tidyverse")
 
+#### STANDALONE ENTRY POINT (only when NOT source()'d) ----
+#
+# Invocation (Docker mode, via runner_SNF in BiomiX_BETA.r):
+#   Rscript SNF_int.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>
+#
+# Local mode: source()'d from BiomiX_BETA.r, which already has its own
+# `directory` and 3-element `args` (group1, group2, directory) in scope.
 
-# # #MANUAL INPUT
-# args = as.list(c("BLymphocytes","SJS"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# args[3] <- "C:/Users/crist/Desktop/BiomiX2.5"
-# 
-# directory <-args[3]
-# 
+if (!exists("Cell_type")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 6) {
+    stop("Usage: Rscript SNF_int.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
+  }
+  
+  directory  <- cli_args[1]
+  args       <- c(cli_args[3], cli_args[4])
+  shared_dir <- cli_args[5]
+  Cell_type  <- cli_args[2]
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  # site_lib <- "/usr/local/lib/R/site-library"
+  # if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+  #   .libPaths(c(.libPaths(), site_lib))
+  # }
+  
+  combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
+  
+} else {
+  # Local/sourced case: `directory` and 3-element `args` already exist from
+  # BiomiX_BETA.r. Only shared_dir needs a fallback if not already present.
+  if (!exists("shared_dir")) shared_dir <- directory
+  directory <- unlist(args[[3]])
+  setwd(directory)
+  combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
+}
 
-# MANUAL INPUT JESS
-# args = as.list(c("BLymphocytes","SLE"))
-# args[1] <-"mutated"
-# args[2] <-"unmutated"
-# directory="~/Documents/biomix_project/BiomiX2.5"
+int_method <- "SNF"
 
-#Loading Json file commands
-directory <- unlist(args[[3]])
-setwd(directory)
-library(jsonlite)
-library(tidyverse)
-combined_json <- jsonlite::fromJSON(txt = "COMBINED_COMMANDS.json")
+MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
+myList <- list()
+
+COMMAND <- combined_json[["COMMANDS"]]
+COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
+
+Max_features_SNF <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[3])
+
+K.snf <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[1])
+sigma <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[2])
+t <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_OPTIONS[3])
+nc <- c(2:as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[1]))
+
+apply_scaling_SNF = as.logical(COMMAND_ADVANCED$ADVANCED_OPTION_NEMO_OPTIONS[2])
+
+if (nc[length(nc)] < 2) {
+  stop("Maximum number of clusters must be at least 2.")
+}
+
+top_feat <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_NUMERIC_OPTIONS[2])
+enrich_vars <- trimws(strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[1]), "/")[[1]])
+surv_vars <- trimws(strsplit(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[2]), "/")[[1]])
+DIR_METADATA <- combined_json[["DIRECTORY_INFO"]][["METADATA_DIR"]]
+
+gt.clust_name <- trimws(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_METADATA_FEATURES[3]))
+
+directory2 <- paste(directory,"/Integration",sep="")
+
+if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
+  METADATA <- read_excel(DIR_METADATA)
+  print("Metadata Excel File read successfully!")
+}else{
+  METADATA <-vroom(DIR_METADATA , delim = "\t", col_names = TRUE)}
+
+set.seed(123)
+setwd(directory2)
+
+# Load functions----
+source("PSN_utils.R")
 
 
 int_method <- "SNF"
@@ -100,7 +151,7 @@ gt.clust_name <- trimws(as.character(COMMAND_ADVANCED$ADVANCED_OPTION_SNF_NEMO_M
 # COMMAND$INTEGRATION <- c("YES","YES", "NO", "NO","NO","NO") #CLL (transcriptomics + methylomics)
 # COMMAND$LABEL <- c("RNA",  "Methylomics", NA, NA, NA, NA)
 
-directory2 <- paste(directory,"/Integration",sep="")
+directory2 <- paste(shared_dir,"/Integration",sep="")
 
 if (grepl("\\.xlsx$|\\.xls$", DIR_METADATA)) {
   METADATA <- read_excel(DIR_METADATA)
@@ -118,7 +169,7 @@ setwd(directory2)
 
 
 # Load functions----
-source("PSN_utils.R");
+#source("PSN_utils.R");
 # # Collect hyperparameters for the analysis (variables and values used defined)----
 # int_method = "SNF" # integration method (can be "SNF" or "NEMO")
 # 
@@ -161,9 +212,9 @@ if(COMMAND$INTEGRATION[i] == "YES"){
   if(COMMAND$DATA_TYPE[i] == "Metabolomics"){
     
     #directory2 <- paste(directory,"/Metabolomics",sep="")
-    directory2 <- paste(directory,"/Integration/INPUT/", "Metabolomics_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+    directory2 <- paste(shared_dir,"/Integration/INPUT/", "Metabolomics_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
     serum_metabolomics <- vroom(paste(directory2,"/Metabolomics_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
-    directory2 <- paste(directory,"/Metabolomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+    directory2 <- paste(shared_dir,"/Metabolomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
     serum_annotation <- vroom( paste(directory2,"/",COMMAND$LABEL[i],"_",args[1],"_vs_",args[2],"_results.tsv", sep = ""), delim = "\t")
     INPUTX<-Metabolomics_processing(serum_annotation,serum_metabolomics)
     assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
@@ -174,7 +225,7 @@ if(COMMAND$INTEGRATION[i] == "YES"){
   if(COMMAND$DATA_TYPE[i] == "Transcriptomics"){
     
     print(args[1])
-    directory2 <- paste(directory,"/Integration/INPUT/", COMMAND$LABEL[i],"_",args[1],"_vs_", args[2], sep ="")
+    directory2 <- paste(shared_dir,"/Integration/INPUT/", COMMAND$LABEL[i],"_",args[1],"_vs_", args[2], sep ="")
     Wholeblood_RNAseq <-  vroom(paste(directory2, "/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], "_normalized_vst_variance.tsv",sep = ""), delim = "\t") #read normalization only
     Wholeblood_metadata <-  vroom(paste(directory2, "/","/Metadata_",COMMAND$LABEL[i], "_", args[1],".tsv",sep = ""), delim = "\t")
     INPUTX<-Transcriptomics_processing(Wholeblood_metadata,Wholeblood_RNAseq, Max_features_SNF)
@@ -187,10 +238,10 @@ if(COMMAND$INTEGRATION[i] == "YES"){
   if(COMMAND$DATA_TYPE[i] == "Methylomics"){
     
     
-    directory2 <- paste(directory,"/Integration/INPUT/", "Methylome_",COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="") 
+    directory2 <- paste(shared_dir,"/Integration/INPUT/", "Methylome_",COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="") 
     Methylome_WB <-  vroom(paste(directory2, "/", COMMAND$LABEL[i], "_matrix_MOFA.tsv",sep = ""), delim = "\t") #read normalization only
     Methylome_metadata <-  vroom(paste(directory2, "/", COMMAND$LABEL[i],"_metadata_MOFA.tsv",sep = "") ,delim = "\t")
-    directory2 <- paste(directory,"/Methylomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+    directory2 <- paste(shared_dir,"/Methylomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
     Methylome_annotation <- vroom(paste(directory2, "/", "DMP_", COMMAND$LABEL[i], "_Methylome_", args[1] ,"_vs_", args[2],".tsv",sep = ""), delim = "\t", col_names = TRUE)
     INPUTX<-Methylomics_processing(Methylome_annotation,Methylome_WB,Methylome_metadata, Max_features_SNF)
     assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
@@ -199,7 +250,7 @@ if(COMMAND$INTEGRATION[i] == "YES"){
   }
   
   if(COMMAND$DATA_TYPE[i] == "Undefined"){        
-    directory2 <- paste(directory,"/Integration/INPUT/", "Undefined_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+    directory2 <- paste(shared_dir,"/Integration/INPUT/", "Undefined_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
     samples_undefined <- vroom(paste(directory2,"/Undefined_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
     INPUTX<-Undefined_processing(samples_undefined)
     assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
@@ -211,9 +262,9 @@ if(COMMAND$INTEGRATION[i] == "YES"){
 }
 
 # Create directory to save all results ---
-dir.create(path = paste(directory,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
+dir.create(path = paste(shared_dir,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
-directory2 <- paste(directory,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") 
+directory2 <- paste(shared_dir,"/Integration/OUTPUT/",int_method, "_", args[1] ,"_vs_", args[2],sep="") 
 setwd(directory2)
 
 #Provide names to the list
@@ -350,10 +401,13 @@ if(!is.null(gt.clust)){
     y = as.numeric(gt.clust)
     ext.val.idx <- apply(clustering, 2,
                          function(x) {
-                             res <- as.data.frame(aricode::clustComp(x, y)[types]);
-                             #res$"V-measure" <- sabre::vmeasure(x, y)$v_measure
-                             rownames(res) <- NULL;
-                             res})
+                           cc <- aricode::clustComp(x, y);
+                           res <- as.data.frame(setNames(
+                             lapply(types, function(t) if (is.null(cc[[t]])) NA_real_ else cc[[t]]),
+                             types
+                           ));
+                           rownames(res) <- NULL;
+                           res})
     for(kn in names(ext.val.idx)){
         ext.val.idx[[kn]]$nc <- kn
     }

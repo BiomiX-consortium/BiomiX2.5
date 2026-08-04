@@ -1,37 +1,58 @@
-# MANUAL INPUT
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"RA"
-# args[2] <-"CTRL"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# directory <- unlist(args[3])
-# Cell_type <- "MOFA_INTEGRATION"
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-# directory <-args[3]
-# COMMAND <- vroom(paste(directory,"COMMANDS.tsv",sep="/"), delim = "\t")
-# COMMAND_MOFA <- vroom(paste(directory,"COMMANDS_MOFA.tsv",sep="/"), delim = "\t")
-# COMMAND_ADVANCED <- vroom(paste(directory,"COMMANDS_ADVANCED.tsv",sep="/"), delim = "\t")
-# Cell_type <- "MOFA_INTEGRATION"
-# Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
-
-
-
 library(enrichR)
 library(vroom)
 library(metpath)
 library(tidyverse)
 library(dplyr)
 
+#### STANDALONE ENTRY POINT (only when NOT source()'d) ----
+#
+# Invocation (Docker mode, via runner_MOFA_MINER in BiomiX_BETA.r):
+#   Rscript BiomiX_MOFA_MINER.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>
+
+if (!exists("Cell_type") || !exists("COMMAND")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 6) {
+    stop("Usage: Rscript BiomiX_MOFA_MINER.R <DIRECTORY> <CELL_TYPE> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
+  }
+  
+  directory  <- cli_args[1]
+  args       <- c(cli_args[3], cli_args[4])
+  shared_dir <- cli_args[5]
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  # site_lib <- "/usr/local/lib/R/site-library"
+  # if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+  #   .libPaths(c(.libPaths(), site_lib))
+  # }
+  
+  combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
+  COMMAND <- combined_json[["COMMANDS"]]
+  COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
+  COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
+  Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
+  
+  # Don't trust cli_args[2] blindly — recompute from COMMAND_MOFA, exactly
+  # like BiomiX_Clinical.R and BiomiX_PUBMED.R already do. BiomiX_BETA.r's
+  # own `Cell_type` at the call site is a leftover from the per-omic loop,
+  # not "MOFA_INTEGRATION"/"DIABLO_INTEGRATION".
+  Cell_type <- as.character(COMMAND_MOFA[1,2])
+  
+} else {
+  # Local/sourced case: everything already exists from BiomiX_BETA.r.
+  if (!exists("shared_dir")) shared_dir <- directory
+  directory <- unlist(args[[3]])
+}
 
 padj_pathways <- as.numeric(COMMAND_ADVANCED[1,11]) 
 n_pathways <- as.numeric(COMMAND_ADVANCED[2,11]) 
 
 #BLOCK TRANSCRIPTOMICS
-directory <- args[[3]]
-
 if (Cell_type == "MOFA_INTEGRATION"){
-  files_out <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
+  files_out <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(shared_dir,"/Integration/OUTPUT/",sep="")),value=TRUE)
 }else if(Cell_type == "DIABLO_INTEGRATION"){
-  files_out <- grep(paste("DIABLO", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
+  files_out <- grep(paste("DIABLO", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(shared_dir,"/Integration/OUTPUT/",sep="")),value=TRUE)
   
 }
 
@@ -43,7 +64,7 @@ websiteLive <- getOption("enrichR.live")
 #For loop required
 for (fil in files_out){
 
-directory2 <- paste(directory,"/Integration/OUTPUT/",fil ,sep="") 
+directory2 <- paste(shared_dir,"/Integration/OUTPUT/",fil ,sep="") 
 setwd(directory2)
 
 
@@ -189,10 +210,10 @@ for (omik in (nam)){
         
 
                 
-        pathway_class_HMDB = 
-                metpath::pathway_class(hmdb_pathway)
-        pathway_class_KEGG = 
-                metpath::pathway_class(kegg_hsa_pathway)
+          pathway_class_HMDB = 
+            hmdb_pathway@pathway_class
+          pathway_class_KEGG = 
+            kegg_hsa_pathway@pathway_class
         
         gc()
         remain_idx = which(unlist(pathway_class_HMDB) == "Metabolic;primary_pathway")
@@ -268,9 +289,9 @@ for (omik in (nam)){
         
         
         pathway_class_HMDB = 
-                metpath::pathway_class(hmdb_pathway)
+          hmdb_pathway@pathway_class
         pathway_class_KEGG = 
-                metpath::pathway_class(kegg_hsa_pathway)
+          kegg_hsa_pathway@pathway_class
         
         gc()
         remain_idx = which(unlist(pathway_class_HMDB) == "Metabolic;primary_pathway")

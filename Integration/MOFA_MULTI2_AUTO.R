@@ -1,31 +1,48 @@
 #upload libraries
 
-#use_python("/usr/bin/python3", required=TRUE)
-# use_condaenv("BiomiX-env", required = TRUE) 
-# reticulate::py_config()
-
-#
-# # #MANUAL INPUT
-# args = as.list(c("Neutrophils","PAPS"))
-# args[1] <-"RA"
-# args[2] <-"CTRL"
-# args[3] <-"C:/Users/crist/Desktop/BiomiX2.5"
-# 
-# directory <-args[3]
-# Cell_type <- "MOFA_INTEGRATION"
-# renv::load(paste(directory,"_INSTALL",sep="/"))
-
 library(data.table)
 library(vroom)
 library(dplyr)
 library(tidyverse)
-#library(DESeq2)
+library(DESeq2)
 library(caret)
 library(rlist)
 library(MOFA2)
 library(reticulate)
-# 
+use_python("/usr/bin/python3", required=TRUE)
+# use_condaenv("BiomiX-env", required = TRUE) 
+# reticulate::py_config()
 
+#### STANDALONE ENTRY POINT (only when NOT source()'d) ----
+#
+# When run standalone via Rscript (Docker mode), parse commandArgs() and
+# load the JSON ourselves. When source()'d from BiomiX_BETA.r (local mode),
+# directory/args/combined_json/COMMAND/etc. already exist — skip entirely.
+
+if (!exists("Cell_type")) {
+  
+  cli_args <- commandArgs(trailingOnly = TRUE)
+  if (length(cli_args) < 4) {
+    stop("Usage: Rscript MOFA_MULTI2.R <DIRECTORY> <GROUP_1> <GROUP_2> <SHARED_DIR>")
+  }
+  
+  directory  <- cli_args[1]
+  args       <- c(cli_args[2], cli_args[3])
+  shared_dir <- cli_args[4]
+  Cell_type  <- "MOFA_INTEGRATION"
+  
+  #renv::load(paste(directory, "_INSTALL", sep = "/"))
+  
+  # site_lib <- "/usr/local/lib/R/site-library"
+  # if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
+  #   .libPaths(c(.libPaths(), site_lib))
+  # }
+  print(cli_args)
+  print(shared_dir)
+  combined_json <- jsonlite::fromJSON(txt = file.path(shared_dir, "COMBINED_COMMANDS.json"))
+  reticulate::use_python("/opt/py-env/bin/python3", required = TRUE)
+  
+}
 
 MART <- vroom(paste(directory,"/Integration/x_BiomiX_DATABASE/mart_export_37.txt",sep=""), delim = ",")
 myList <- list()
@@ -35,11 +52,15 @@ COMMAND_MOFA <- combined_json[["COMMANDS_MOFA"]]
 COMMAND_ADVANCED <- combined_json[["COMMANDS_ADVANCED"]]
 Max_features <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA_INTERPRETATION_BIBLIOGRAPHY[3])
 Contribution_threshold <- as.numeric(COMMAND_ADVANCED$ADVANCED_OPTION_MOFA[3])
-Cell_type == COMMAND_MOFA[1,2]
 
 directory2 <- paste(directory,"/Metabolomics",sep="")
 
+requested_factors <- as.numeric(COMMAND_MOFA[3,2])
+auto_mode <- (requested_factors == 0)
 
+factor_range <- if (auto_mode) 3:50 else requested_factors
+print("FACTOR RANGE")
+print(factor_range)
 
 #### UNDEFINED FUNCTION
 
@@ -252,9 +273,9 @@ if(COMMAND$INTEGRATION[i] == "YES"){
 if(COMMAND$DATA_TYPE[i] == "Metabolomics"){
 
 #directory2 <- paste(directory,"/Metabolomics",sep="")
-directory2 <- paste(directory,"/Integration/INPUT/", "Metabolomics_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+directory2 <- paste(shared_dir,"/Integration/INPUT/", "Metabolomics_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
 serum_metabolomics <- vroom(paste(directory2,"/Metabolomics_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
-directory2 <- paste(directory,"/Metabolomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+directory2 <- paste(shared_dir,"/Metabolomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
 serum_annotation <- vroom( paste(directory2,"/",COMMAND$LABEL[i],"_",args[1],"_vs_",args[2],"_results.tsv", sep = ""), delim = "\t")
 INPUTX<-Metabolomics_processing(serum_annotation,serum_metabolomics,COMMAND$LABEL[i])
 assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
@@ -265,7 +286,7 @@ myList <- list.append(myList,INPUTX[[1]])
 if(COMMAND$DATA_TYPE[i] == "Transcriptomics"){
         
         print(args[1])
-        directory2 <- paste(directory,"/Integration/INPUT/", COMMAND$LABEL[i],"_",args[1],"_vs_", args[2], sep ="")
+        directory2 <- paste(shared_dir,"/Integration/INPUT/", COMMAND$LABEL[i],"_",args[1],"_vs_", args[2], sep ="")
         Wholeblood_RNAseq <-  vroom(paste(directory2, "/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], "_normalized_vst_variance.tsv",sep = ""), delim = "\t") #read normalization only
         Wholeblood_metadata <-  vroom(paste(directory2, "/","/Metadata_",COMMAND$LABEL[i], "_", args[1],".tsv",sep = ""), delim = "\t")
         INPUTX<-Transcriptomics_processing(Wholeblood_metadata,Wholeblood_RNAseq,COMMAND$LABEL[i])
@@ -278,10 +299,10 @@ if(COMMAND$DATA_TYPE[i] == "Transcriptomics"){
 if(COMMAND$DATA_TYPE[i] == "Methylomics"){
        
 
-        directory2 <- paste(directory,"/Integration/INPUT/", "Methylome_",COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="") 
+        directory2 <- paste(shared_dir,"/Integration/INPUT/", "Methylome_",COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="") 
         Methylome_WB <-  vroom(paste(directory2, "/", COMMAND$LABEL[i], "_matrix_MOFA.tsv",sep = ""), delim = "\t") #read normalization only
         Methylome_metadata <-  vroom(paste(directory2, "/", COMMAND$LABEL[i],"_metadata_MOFA.tsv",sep = "") ,delim = "\t")
-        directory2 <- paste(directory,"/Methylomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+        directory2 <- paste(shared_dir,"/Methylomics/OUTPUT/", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
         Methylome_annotation <- vroom(paste(directory2, "/", "DMP_", COMMAND$LABEL[i], "_Methylome_", args[1] ,"_vs_", args[2],".tsv",sep = ""), delim = "\t", col_names = TRUE)
         INPUTX<-Methylomics_processing(Methylome_annotation,Methylome_WB,Methylome_metadata,COMMAND$LABEL[i])
         assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
@@ -289,7 +310,7 @@ if(COMMAND$DATA_TYPE[i] == "Methylomics"){
         
 }
         if(COMMAND$DATA_TYPE[i] == "Undefined"){        
-                directory2 <- paste(directory,"/Integration/INPUT/", "Undefined_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
+                directory2 <- paste(shared_dir,"/Integration/INPUT/", "Undefined_", COMMAND$LABEL[i], "_",args[1],"_vs_", args[2], sep ="")
                 samples_undefined <- vroom(paste(directory2,"/Undefined_",COMMAND$LABEL[i], "_MOFA.tsv", sep = ""), delim = "\t")
                 INPUTX<-Undefined_processing(samples_undefined,COMMAND$LABEL[i])
                 assign(paste("INPUT", i, "_visual", sep=""),INPUTX[[2]])
@@ -354,19 +375,18 @@ head(data_opts)
 
 #ITERATIONS
 
-factors = 50
-penalty = 0
-best_of_you = matrix(0, nrow= 1, ncol= 3)
-colnames(best_of_you) <-c("n_significant_factors", "summed_p.adj","n_factors")
+penalty <- 0
+best_of_you <- matrix(0, nrow = 1, ncol = 3)
+colnames(best_of_you) <- c("n_significant_factors", "summed_p.adj", "n_factors")
 
-for (iter in 3:factors){
+for (iter in factor_range) {
+  
+  n_factors <- iter
 
-n_factors = iter
+  dir.create(path = paste(shared_dir,"/Integration/OUTPUT/","MOFA", "_", args[1] ,"_vs_", args[2], "_",as.numeric(n_factors),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
 
-dir.create(path = paste(directory,"/Integration/OUTPUT/","MOFA", "_", args[1] ,"_vs_", args[2], "_",as.numeric(n_factors),"_factors" ,sep="") ,  showWarnings = TRUE, recursive = TRUE, mode = "0777")
-
-directory2 <- paste(directory,"/Integration/OUTPUT/","MOFA", "_", args[1] ,"_vs_", args[2], "_",as.numeric(n_factors),"_factors" ,sep="") 
-setwd(directory2)
+  directory2 <- paste(shared_dir,"/Integration/OUTPUT/","MOFA", "_", args[1] ,"_vs_", args[2], "_",as.numeric(n_factors),"_factors" ,sep="") 
+  setwd(directory2)
 
 
 
@@ -828,42 +848,38 @@ dev.off()
 #IF % explained by last factor < 1 % add one penality
 #When penality = 3 the automatic loop is stopped.
 
-line = model@cache$variance_explained$r2_per_factor[[1]]
-
-if (sum(line[nrow(line),]) < 1){
-        penalty = penalty + 1
-        print(paste("PENALTY = ",penalty, sep=""))
-        if (penalty == 3 ){
-                break
-        }
+if (auto_mode) {
+  line <- model@cache$variance_explained$r2_per_factor[[1]]
+  if (sum(line[nrow(line),]) < 1){
+    penalty <- penalty + 1
+    print(paste("PENALTY = ", penalty, sep=""))
+    if (penalty == 3){
+      break
+    }
+  }
+  print(paste("PENALTY = ", penalty, sep=""))
+}
 }
 
-print(paste("PENALTY = ",penalty, sep=""))
-
+if (auto_mode) {
+  best_of_you <- best_of_you[-nrow(best_of_you),]
+  best_of_you <- as.data.frame(best_of_you)
+  best_of_you <- best_of_you[order(-as.numeric(best_of_you$n_significant_factors), as.numeric(best_of_you$summed_p.adj)),]
+  top <- best_of_you[1:3,3]
+  
+  write.table(best_of_you, file = paste(shared_dir,"/Integration/OUTPUT/","AUTOMATIC_SEARCH_BEST_FACTORS", "_", args[1] ,"_vs_", args[2] ,".tsv",sep=""), quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
+  line <- "#ONLY THE TOP 3 MOFA MODELS ARE RETAINED#"
+  write(line, file = paste(shared_dir,"/Integration/OUTPUT/","AUTOMATIC_SEARCH_BEST_FACTORS", "_", args[1] ,"_vs_", args[2],".tsv" ,sep=""), append = TRUE)
+  
+  files <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""), list.files(paste(shared_dir,"/Integration/OUTPUT/",sep="")), value = TRUE)
+  saved <- NULL
+  for(to in top){
+    saved <- append(files[grep(paste("*_",to,sep=""), files)], saved)
+  }
+  files_to_elim <- files[!files %in% saved]
+  for(to in files_to_elim){
+    if (dir.exists(paste(shared_dir,"/Integration/OUTPUT/",to, sep=""))) {
+      unlink(paste(shared_dir,"/Integration/OUTPUT/",to, sep=""), recursive = TRUE)
+    }
+  }
 }
-
-best_of_you <- best_of_you[-nrow(best_of_you),]
-best_of_you <- as.data.frame(best_of_you)
-best_of_you <- best_of_you[order(-as.numeric(best_of_you$n_significant_factors) , as.numeric(best_of_you$summed_p.adj)),]
-top <- best_of_you[1:3,3]
-
-#SAVE THE RESULTS IN THE OUTPUT FOLDER WITH THE NAME OF THE ANALYSIS + AUTOMATIC
-
-write.table(best_of_you,file= paste(directory,"/Integration/OUTPUT/","AUTOMATIC_SEARCH_BEST_FACTORS", "_", args[1] ,"_vs_", args[2] ,".tsv",sep=""),quote = FALSE, row.names = FALSE, col.names = TRUE, sep = "\t")
-line="#ONLY THE TOP 3 MOFA MODELS ARE RETAINED#"
-write(line,file= paste(directory,"/Integration/OUTPUT/","AUTOMATIC_SEARCH_BEST_FACTORS", "_", args[1] ,"_vs_", args[2],".tsv" ,sep=""),append=TRUE)
-#detection total significant factors
-files <- grep(paste("MOFA", "_", args[1] ,"_vs_", args[2],"*", sep=""),list.files(paste(directory,"/Integration/OUTPUT/",sep="")),value=TRUE)
-saved=NULL
-for(to in top){
-saved<-append(files[grep(paste("*_",to,sep=""), files)], saved)
-}
-
-files_to_elim<-files[!files %in% saved]
-
-for(to in files_to_elim){
-if (dir.exists(paste(directory,"/Integration/OUTPUT/",to, sep=""))) {
-        unlink(paste(directory,"/Integration/OUTPUT/",to, sep=""), recursive = TRUE)
-}}
-
-
