@@ -16,12 +16,16 @@ if (!exists("Cell_type")) {
   shared_dir <- cli_args[5]
   iterations <- as.numeric(cli_args[6])
   
+  is_in_docker <- TRUE   # <-- AGGIUNTA
+  
   #renv::load(paste(directory, "_INSTALL", sep = "/"))
   
   site_lib <- "/usr/local/lib/R/site-library"
   if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
     .libPaths(c(.libPaths(), site_lib))
   }
+} else {
+  is_in_docker <- FALSE   # <-- AGGIUNTA (nuovo ramo else)
 }
 
 
@@ -237,8 +241,12 @@ colnames(matrix) <- make.unique(names(matrix), sep = "_")
 
 #QC VISUALISATION FUNCTION
 if(COMMAND$PREVIEW[i] == "YES"){
-browser_analysis <- readLines(paste(directory, '/_INSTALL/CHOISE_BROWSER_pre-view', sep = ""), n = 1)
-run_qc_preview(COMMAND, i, matrix, Metadata, directory)
+  if (is_in_docker) {
+    run_qc_preview(COMMAND, i, matrix, Metadata, directory, host = "0.0.0.0", port = 3839, launch_browser = FALSE)
+  } else {
+    browser_analysis <- readLines(paste(directory, '/_INSTALL/CHOISE_BROWSER_pre-view', sep = ""), n = 1)
+    run_qc_preview(COMMAND, i, matrix, Metadata, directory)
+  }
 } else {
   print("no QC pre-visualization")
 }

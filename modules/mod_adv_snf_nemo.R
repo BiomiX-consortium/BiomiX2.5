@@ -33,7 +33,7 @@ advSnfNemoUI <- function(id) {
       ),
       column(3,
         .adv_param_block("N° iterations",
-          numericInput(ns("snf_iterations"), NULL, value = 10, min = 1, step = 1, width = "100%")
+          numericInput(ns("snf_iterations"), NULL, value = 20, min = 1, step = 1, width = "100%")
         )
       )
     ),

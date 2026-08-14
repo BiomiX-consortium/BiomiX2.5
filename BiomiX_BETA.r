@@ -27,7 +27,7 @@ print("Information acquired, running the analysis")
 
 
 #Master function to run the docker systems
-generateRunnerFunction <- function(dockerImage) {
+generateRunnerFunction <- function(dockerImage, expose_qc_port = FALSE) {
   
   if (!is_in_docker) {
     # --- Caso locale: nessun Docker, comportamento identico a prima ---
@@ -58,14 +58,17 @@ generateRunnerFunction <- function(dockerImage) {
     minimized = FALSE, invisible = TRUE, timeout = 0
   ) {
     
-    # Template: docker run --rm -v <host_path>:/shared --entrypoint Rscript
+    # Template: docker run --rm -v <host_path>:/shared [--p 3839:3839] --entrypoint Rscript
     #           <dockerImage> COMMAND ARGS
+    
+    port_args <- if (expose_qc_port) c("-p", "3839:3839") else character()
     
     system2(
       command = "docker",
       args = c(
         "run", "--rm",
         "-v", paste0(host_shared_path, ":/shared"),
+        port_args,                        # NEW — esposta solo se richiesto (QC preview)
         "--entrypoint", command,          # es. "Rscript" — sovrascrive l'ENTRYPOINT dell'immagine
         dockerImage,
         shQuote(args)
@@ -226,9 +229,10 @@ for (i in position){
       source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
     } else {
       # --- Caso Docker: delega al container fratello ---
-      #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      
+      runner_transcriptomics <- generateRunnerFunction(
+        "ghcr.io/biomix-consortium/biomix-transcriptomics:latest",
+        expose_qc_port = TRUE   # NEW — serve la porta 3839 per il QC preview Shiny
+      )
       
       runner_transcriptomics(
         command = "Rscript",
@@ -238,10 +242,8 @@ for (i in position){
           Cell_type,
           args[[1]],
           args[[2]],
-          shared_dir,        # NEW — così lo script transcriptomics sa dove leggere il JSON
-          iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
-          
-          
+          shared_dir,
+          iterations
         )
       )
     }
@@ -293,7 +295,10 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_metabolomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-metabolomics:latest")
+      runner_metabolomics <- generateRunnerFunction(
+        "ghcr.io/biomix-consortium/biomix-metabolomics:latest",
+        expose_qc_port = TRUE   # NEW — serve la porta 3839 per il QC preview Shiny
+      )
       
       
       runner_metabolomics(
@@ -356,7 +361,10 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_methylomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-methylomics:latest")
+      runner_methylomics <- generateRunnerFunction(
+        "ghcr.io/biomix-consortium/biomix-methylomics:latest",
+        expose_qc_port = TRUE   # NEW — serve la porta 3839 per il QC preview Shiny
+      )
       
       
       runner_methylomics(

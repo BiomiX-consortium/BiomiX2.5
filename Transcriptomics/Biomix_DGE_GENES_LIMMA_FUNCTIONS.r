@@ -114,7 +114,8 @@ filter_metadata_and_expression <- function(Metadata_Bcell, DGE2, COMMAND_ADVANCE
 
 #Preview function
 
-launch_qc_preview <- function(DGE2, Metadata_Bcell, directory, browser_analysis) {
+launch_qc_preview <- function(DGE2, Metadata_Bcell, directory, browser_analysis = NULL,
+                              host = NULL, port = NULL, launch_browser = TRUE) {
   # Set up numeric matrix for visualization
   Samples_preview <- colnames(DGE2)
   numeric_data <- t(DGE2)
@@ -128,15 +129,19 @@ launch_qc_preview <- function(DGE2, Metadata_Bcell, directory, browser_analysis)
   
   # Load Shiny app
   source(file.path(directory, "BiomiX_preview.r"))
-  browser_path <- readLines(file.path(directory, "_INSTALL", "CHOISE_BROWSER_pre-view"), n = 1)
   
-  options(browser = get_default_browser())
-  message("Pre QC data visualization. If the browser does not open automatically, copy and paste the link into a browser.")
-  message("Once the QC window opens, apply your filters and click 'close app' to continue.")
-  message("NOTE: If the browser does not open, set up the correct path in CHOISE_BROWSER_pre-view.")
-  
-  # Run the Shiny App
-  Preview <- shiny::runApp(runShinyApp(numeric_data, metadata), launch.browser = TRUE)
+  if (is.null(host)) {
+    # Caso locale: comportamento originale, invariato
+    options(browser = get_default_browser())
+    message("Pre QC data visualization. If the browser does not open automatically, copy and paste the link into a browser.")
+    message("Once the QC window opens, apply your filters and click 'close app' to continue.")
+    message("NOTE: If the browser does not open, set up the correct path in CHOISE_BROWSER_pre-view.")
+    Preview <- shiny::runApp(runShinyApp(numeric_data, metadata), launch.browser = launch_browser)
+  } else {
+    # Caso Docker: porta/host fissi, niente apertura automatica del browser (headless)
+    Preview <- shiny::runApp(runShinyApp(numeric_data, metadata),
+                             host = host, port = port, launch.browser = launch_browser)
+  }
   
   # Update global variables
   DGE2_updated <- as.data.frame(t(Preview$matrix))

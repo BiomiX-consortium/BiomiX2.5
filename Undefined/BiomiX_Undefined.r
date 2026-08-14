@@ -131,14 +131,17 @@ colnames(matrix) <- make.unique(names(matrix), sep = "_")
 
 #====================================
 if(COMMAND$PREVIEW[i] == "YES"){
-        
-        #Block to open the Quality control windows to select filtering, normalization and visualize the QC.
-        #ADD the ID to the first column
-        browser_analysis <- readLines(paste(directory, '/_INSTALL/CHOISE_BROWSER_pre-view', sep = ""), n = 1)
-        run_qc_preview(matrix, Metadata, directory)
-        
+  
+  #Block to open the Quality control windows to select filtering, normalization and visualize the QC.
+  if (is_in_docker) {
+    run_qc_preview(matrix, Metadata, directory, host = "0.0.0.0", port = 3839, launch_browser = FALSE)
+  } else {
+    browser_analysis <- readLines(paste(directory, '/_INSTALL/CHOISE_BROWSER_pre-view', sep = ""), n = 1)
+    run_qc_preview(matrix, Metadata, directory)
+  }
+  
 }else{
-        print("no QC pre-visualization")
+  print("no QC pre-visualization")
 }
 
 

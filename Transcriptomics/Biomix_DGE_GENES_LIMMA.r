@@ -16,6 +16,8 @@
 
 if (!exists("Cell_type")) {
   
+  is_in_docker <- TRUE   # <-- AGGIUNTA
+  
   cli_args <- commandArgs(trailingOnly = TRUE)
   if (length(cli_args) < 6) {
     stop("Usage: Rscript Biomix_DGE_GENES_LIMMA.r <DIRECTORY> <CELL_TYPE_LABEL> <GROUP_1> <GROUP_2> <SHARED_DIR> <ITERATIONS>")
@@ -35,6 +37,8 @@ if (!exists("Cell_type")) {
   }
   
   setwd(directory)
+} else {
+  is_in_docker <- FALSE   # <-- AGGIUNTA (nuovo ramo else, prima non c'era)
 }
 
 #### DATASET REARRANGEMENT ----
@@ -209,15 +213,25 @@ summary(as.factor(Metadata_Bcell$CONDITION))
 #Preview visualization
 
 if(COMMAND$PREVIEW[i] == "YES"){
-        source(paste(directory,'/BiomiX_preview.r', sep=""))
-        browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
-        options(browser = get_default_browser())
-        print(get_default_browser())
-        result <- launch_qc_preview(DGE2, Metadata_Bcell, directory, browser_analysis)
-        DGE2 <- result$DGE2
-        Metadata_Bcell <- result$Metadata_Bcell
+  source(paste(directory,'/BiomiX_preview.r', sep=""))
+  
+  if (is_in_docker) {
+    message("Pre QC data visualization.")
+    message("Apri questo link nel browser: http://localhost:3839")
+    message("Una volta aperta la finestra QC, applica i filtri e clicca 'close app' per proseguire.")
+    result <- launch_qc_preview(DGE2, Metadata_Bcell, directory,
+                                host = "0.0.0.0", port = 3839, launch_browser = FALSE)
+  } else {
+    browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
+    options(browser = get_default_browser())
+    print(get_default_browser())
+    result <- launch_qc_preview(DGE2, Metadata_Bcell, directory, browser_analysis)
+  }
+  
+  DGE2 <- result$DGE2
+  Metadata_Bcell <- result$Metadata_Bcell
 } else {
-        print("no QC pre-visualization")
+  print("no QC pre-visualization")
 }
 
 print("samples post pre-visualization ")

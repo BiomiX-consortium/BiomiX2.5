@@ -16,12 +16,16 @@ if (!exists("Cell_type")) {
   shared_dir <- cli_args[5]
   iterations <- as.numeric(cli_args[6])
   
+  is_in_docker <- TRUE   # <-- AGGIUNTA
+  
   #renv::load(paste(directory, "_INSTALL", sep = "/"))
   
   site_lib <- "/usr/local/lib/R/site-library"
   if (dir.exists(site_lib) && !(site_lib %in% .libPaths())) {
     .libPaths(c(.libPaths(), site_lib))
   }
+} else {
+  is_in_docker <- FALSE   # <-- AGGIUNTA (nuovo ramo else)
 }
 
 library(vroom)
@@ -160,15 +164,20 @@ colnames(metadata)[colnames(metadata) == "CONDITION"] <- "condition"
 # Source the BiomiX_preview script to load the runShinyApp() function
 source(paste(directory,'/BiomiX_preview.r', sep=""))
 
-browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
-
-# Now call the runShinyApp function with numeric_data and metadata
-options(browser = get_default_browser())
-print("Pre QC data visualization. If the browser does not open automatically copy and paste the link on a browser")
-print("One completed the analysis modification click on close app to continue the analysis")
-print("ATTENTION!: IF the browser does not open set up the path to your browser on the CHOISE_BROWSER_pre-view file in the BiomiX _INSTALL folder")
-
-Preview <- shiny::runApp(runShinyApp(numeric_data, metadata), launch.browser = TRUE)
+if (is_in_docker) {
+  message("Pre QC data visualization.")
+  message("Apri questo link nel browser: http://localhost:3839")
+  message("Una volta aperta la finestra QC, applica i filtri e clicca 'close app' per proseguire.")
+  Preview <- shiny::runApp(runShinyApp(numeric_data, metadata),
+                           host = "0.0.0.0", port = 3839, launch.browser = FALSE)
+} else {
+  browser_analysis <- readLines(paste(directory,'/_INSTALL/CHOISE_BROWSER_pre-view',sep=""), n = 1)
+  options(browser = get_default_browser())
+  print("Pre QC data visualization. If the browser does not open automatically copy and paste the link on a browser")
+  print("One completed the analysis modification click on close app to continue the analysis")
+  print("ATTENTION!: IF the browser does not open set up the path to your browser on the CHOISE_BROWSER_pre-view file in the BiomiX _INSTALL folder")
+  Preview <- shiny::runApp(runShinyApp(numeric_data, metadata), launch.browser = TRUE)
+}
 
 Matrix<-as.data.frame(t(Preview$matrix))
 Metadata_individual<-Preview$metadata

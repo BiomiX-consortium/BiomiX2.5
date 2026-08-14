@@ -254,7 +254,8 @@ filter_samples_by_metadata <- function(COMMAND_ADVANCED, Metadata, matrix) {
 
 #FUNCTION QC VISUALISATION
 
-run_qc_preview <- function(COMMAND, i, matrix, Metadata, directory) {
+run_qc_preview <- function(COMMAND, i, matrix, Metadata, directory,
+                           host = NULL, port = NULL, launch_browser = TRUE) {
   if (COMMAND$PREVIEW[i] == "YES") {
     
     # Block to open the Quality control windows to select filtering, normalization and visualize the QC.
@@ -272,15 +273,22 @@ run_qc_preview <- function(COMMAND, i, matrix, Metadata, directory) {
     # Source the BiomiX_preview script to load the runShinyApp() function
     source(paste(directory, '/BiomiX_preview.r', sep = ""))
     
-    browser_analysis <- readLines(paste(directory, '/_INSTALL/CHOISE_BROWSER_pre-view', sep = ""), n = 1)
-    
-    # Call the runShinyApp function with numeric_data and metadata
-    options(browser = get_default_browser())
-    print("Pre QC data visualization. If the browser does not open automatically copy and paste the link on a browser")
-    print("Once completed the analysis modification click on close app to continue the analysis")
-    print("ATTENTION!: IF the browser does not open set up the path to your browser on the CHOISE_BROWSER_pre-view file in the BiomiX _INSTALL folder")
-    
-    Preview <- shiny::runApp(runShinyApp(numeric_data, metadata), launch.browser = TRUE)
+    if (is.null(host)) {
+      # Caso locale: comportamento originale, invariato
+      browser_analysis <- readLines(paste(directory, '/_INSTALL/CHOISE_BROWSER_pre-view', sep = ""), n = 1)
+      options(browser = get_default_browser())
+      print("Pre QC data visualization. If the browser does not open automatically copy and paste the link on a browser")
+      print("Once completed the analysis modification click on close app to continue the analysis")
+      print("ATTENTION!: IF the browser does not open set up the path to your browser on the CHOISE_BROWSER_pre-view file in the BiomiX _INSTALL folder")
+      Preview <- shiny::runApp(runShinyApp(numeric_data, metadata), launch.browser = launch_browser)
+    } else {
+      # Caso Docker: porta/host fissi, niente apertura automatica del browser (headless)
+      message("Pre QC data visualization.")
+      message("Apri questo link nel browser: http://localhost:3839")
+      message("Una volta aperta la finestra QC, applica i filtri e clicca 'close app' per proseguire.")
+      Preview <- shiny::runApp(runShinyApp(numeric_data, metadata),
+                               host = host, port = port, launch.browser = launch_browser)
+    }
     
     matrix <- Preview$matrix
     Metadata <- Preview$metadata
