@@ -111,7 +111,7 @@ inputsUI <- function(id) {
       column(1, div(class = "col-header", "Preview", br(), "QC")),
       column(1, div(class = "col-header", "Single Omics", br(), "Analysis")),
       column(2, div(class = "col-header", "Data Type")),
-      column(1, div(class = "col-header", "Integration")),
+      column(1, div(class = "col-header", "Integration (*Run single omics before)")),
       column(2, div(class = "col-header", "Label")),
       column(1, div(class = "col-header", "Filter by", br(), "Label")),
       column(3, div(class = "col-header", "Data Upload"))
