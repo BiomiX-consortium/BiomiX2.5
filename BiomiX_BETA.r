@@ -227,7 +227,7 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:V2")
+      runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
       
       
       runner_transcriptomics(
@@ -257,31 +257,6 @@ for (i in position){
     selection_samples = COMMAND$SELECTION[i]
     #purity_filter =COMMAND$PURITY[i]
     directory2 <- paste(directory,"/Transcriptomics/INPUT",sep="")
-    #files <- grep("MATRIX*",list.files(directory2),value=TRUE)
-    #files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-    # if (!is_in_docker) {
-    #   # --- Caso locale: comportamento originale, invariato ---
-    #   source(paste(directory,"/Transcriptomics/Biomix_DGE_GENES_LIMMA.r",sep=""))
-    # } else {
-    #   # --- Caso Docker: delega al container fratello ---
-    #   #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-    #   runner_transcriptomics <- generateRunnerFunction("biomix-transcriptomics-test:latest")
-    #   
-    #   
-    #   runner_transcriptomics(
-    #     command = "Rscript",
-    #     args    = c(
-    #       paste0(directory, "/Transcriptomics/Biomix_DGE_GENES_LIMMA.r"),
-    #       directory,
-    #       Cell_type,
-    #       args[[1]],
-    #       args[[2]],
-    #       shared_dir,        # NEW — così lo script transcriptomics sa dove leggere il JSON
-    #       iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
-    #       
-    #     )
-    #   )
-    # }    #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
     cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
     gc()
   }
@@ -318,7 +293,7 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_metabolomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-metabolomics:V2")
+      runner_metabolomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-metabolomics:latest")
       
       
       runner_metabolomics(
@@ -350,30 +325,6 @@ for (i in position){
     directory2 <- paste(directory,"/Metabolomics/INPUT",sep="")
     files <- grep("MATRIX*",list.files(directory2),value=TRUE)
     files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-    # if (!is_in_docker) {
-    #   # --- Caso locale: comportamento originale, invariato ---
-    #   source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep=""))
-    # } else {
-    #   # --- Caso Docker: delega al container fratello ---
-    #   #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-    #   runner_metabolomics <- generateRunnerFunction("biomix-metabolomics-test:latest")
-    #   
-    #   
-    #   runner_metabolomics(
-    #     command = "Rscript",
-    #     args    = c(
-    #       paste0(directory, "/Metabolomics/BiomiX_DMA.r"),
-    #       directory,
-    #       Cell_type,
-    #       args[[1]],
-    #       args[[2]],
-    #       shared_dir        # NEW — così lo script metabolomics sa dove leggere il JSON
-    #       
-    #     )
-    #   )
-    # }
-    #source(paste(directory,"/Metabolomics/BiomiX_DMA.r",sep = ""))
-    #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
     cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
     gc() 
   }
@@ -405,7 +356,7 @@ for (i in position){
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_methylomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-methylomics:V2")
+      runner_methylomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-methylomics:latest")
       
       
       runner_methylomics(
@@ -437,32 +388,6 @@ for (i in position){
     directory2 <- paste(directory,"/Methylomics/INPUT",sep="")
     files <- grep("MATRIX*",list.files(directory2),value=TRUE)
     files_meta <- grep("METADATA*",list.files(directory2),value=TRUE)
-    # if (!is_in_docker) {
-    #   # --- Caso locale: comportamento originale, invariato ---
-    #   source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
-    # } else {
-    #   # --- Caso Docker: delega al container fratello ---
-    #   #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-    #   runner_metabolomics <- generateRunnerFunction("biomix-methylomics-test:latest")
-    #   
-    #   
-    #   runner_metabolomics(
-    #     command = "Rscript",
-    #     args    = c(
-    #       paste0(directory, "/Methylomics/BiomiX_DMA.r"),
-    #       directory,
-    #       Cell_type,
-    #       args[[1]],
-    #       args[[2]],
-    #       shared_dir,        # NEW — così lo script metabolomics sa dove leggere il JSON
-    #       iterations        # NEW — posizione 6, valore già corretto in questo punto del loop
-    #       
-    #       
-    #     )
-    #   )
-    # }
-    #source(paste(directory,"/Methylomics/BiomiX_DMA.r",sep=""))
-    #cat("\n\n\n\n\n  ", Cell_type, " analysis complete ^-^")
     cat("\n\n\n\n\n  Reminder: \n The Single Omics Analysis was not selected for", Cell_type, "\n If you are performing multiomics analysis and you did not run it before please do it,\n without the multiomics pipeline will not find the input data")
     gc()
   }
@@ -486,7 +411,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
       } else {
         # --- Caso Docker: delega al container fratello ---
         #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-        runner_MOFA <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-mofa-diablo:V2")
+        runner_MOFA <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-mofa-diablo:latest")
         
         runner_MOFA(
           command = "Rscript",
@@ -518,7 +443,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_DIABLO <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-mofa-diablo:V2")
+      runner_DIABLO <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-mofa-diablo:latest")
       
       runner_DIABLO(
         command = "Rscript",
@@ -550,7 +475,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_SNF <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-snf-nemo:V2")
+      runner_SNF <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-snf-nemo:latest")
       
       runner_SNF(
         command = "Rscript",
@@ -583,7 +508,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
     } else {
       # --- Caso Docker: delega al container fratello ---
       #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-      runner_NEMO <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-snf-nemo:V2")
+      runner_NEMO <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-snf-nemo:latest")
       
       runner_NEMO(
         command = "Rscript",
@@ -628,7 +553,7 @@ if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGR
   } else {
     # --- Caso Docker: delega al container fratello ---
     #runner_transcriptomics <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-transcriptomics:latest")
-    runner_Interpretation <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretation:V2")
+    runner_Interpretation <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretation:latest")
     
     runner_Interpretation(
       command = "Rscript",
@@ -663,7 +588,7 @@ if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGR
   if (!is_in_docker) {
     source(paste(directory,"/Integration/BiomiX_MOFA_MINER.R",sep=""))
   } else {
-    runner_MOFA_MINER <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretation:V2")
+    runner_MOFA_MINER <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretation:latest")
     
     runner_MOFA_MINER(
       command = "Rscript",
@@ -697,7 +622,7 @@ if(COMMAND_MOFA[1,2] == "DIABLO_INTEGRATION" | COMMAND_MOFA[1,2] == "MOFA_INTEGR
   if (!is_in_docker) {
     source(paste(directory,"/Integration/BiomiX_PUBMED.R",sep=""))
   } else {
-    runner_PUBMED <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretation:V2")
+    runner_PUBMED <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-interpretation:latest")
     
     runner_PUBMED(
       command = "Rscript",
