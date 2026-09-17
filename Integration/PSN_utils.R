@@ -1335,7 +1335,7 @@ enrich_surv_analysis <- function(clustering, metadata, enrich_vars=c(),
                 km <- surv_fit(formula=form, data=surv_data)
                 
                 pp <- ggsurvplot(km, data=surv_data, title= v, conf.int = T, 
-                                 ggtheme = theme_gray(), linetype=NULL)
+                                 ggtheme = theme_gray(), linetype=1)
                 ggsave(paste0("KM_", v, "_K",length(unique(cl)), ".png"), plot=pp$plot,  bg="white", 
                        path=file_path, width=15, height=10, units="cm")
                 

@@ -460,7 +460,7 @@ if(!is.null(gt.clust)){
     y = as.numeric(gt.clust)
     ext.val.idx <- apply(clustering, 2,
                          function(x) {
-                           cc <- aricode::clustComp(x, y);
+                           cc <- aricode::compare_clustering(x, y, AMI=TRUE);
                            res <- as.data.frame(setNames(
                              lapply(types, function(t) if (is.null(cc[[t]])) NA_real_ else cc[[t]]),
                              types
