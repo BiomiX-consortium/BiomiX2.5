@@ -29,7 +29,7 @@ load_annotation <- function(ANNOTATION, i, COMMAND_ADVANCED) {
     }
   }
   
-  if (ANNOTATION == "MS2") {
+  if (ANNOTATION == "MS1+MS2") {
     input_ms1 <- which(substr(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3_INDEX, 1, 1) %in% i)
     if (length(input_ms1) != 0) {
       if (file.exists(COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_FILES_MS2[input_ms1])) {

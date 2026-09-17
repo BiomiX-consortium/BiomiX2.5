@@ -29,6 +29,15 @@ if (!exists("Cell_type")) {
 }
 
 
+
+# directory  <- "C:/Users/crist/Desktop/BiomiX2.5"
+# Cell_type  <- "TEST"
+# args       <- c("PTB", "HC")
+# shared_dir <- "C:/Users/crist/Desktop/shared"
+# iterations <- as.numeric(1)
+# i = 2
+
+
 library(vroom)
 library(dplyr)
 library(cmmr)
@@ -205,7 +214,7 @@ load_biofluid_metabolites(COMMAND$LABEL[i], "Amniotic Fluid", "AF_metabolite_ann
 process_sample_selection(selection_samples, Cell_type, Metadata_total, matrix)
 
 
-Metadata <- Metadata_Bcell
+Metadata <- Metadata_total
 Metadata_individual=NULL
 Metadata_reads=NULL
 Metadata_Bcell=NULL
@@ -301,7 +310,7 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
         
 } else {
         
-        if(ANNOTATION == "MS2"){  
+        if(ANNOTATION == "MS1+MS2"){  
           
           
           #Generation parameters for tidymass annotation multidataset
@@ -414,7 +423,7 @@ run_metaboanalyst_pipeline_annotated(query_id, COMMAND_ADVANCED, Cell_type, args
                 tolerance_list <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1[3]
                 list_database_ms1 <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS1_2[3]}
         
-        if(ANNOTATION == "MS2"){ 
+        if(ANNOTATION == "MS1+MS2"){ 
                 adduct_list <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2[1]
                 mode_ions <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_3[1]
                 adduct_list_2 <- COMMAND_ADVANCED$ADVANCED_OPTION_METABOLOMICS_ANNOTATION_MS2_2[2]
