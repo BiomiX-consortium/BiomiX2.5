@@ -696,6 +696,28 @@ server <- function(input, output, session) {
       return()
     }
 
+    # At least one analysis (analysis or integration) must be selected
+    is_active <- vapply(id, function(x)
+      identical(x$analysis, "YES") || identical(x$integration, "YES"), logical(1))
+    if (!any(is_active)) {
+      showNotification(
+        "Nothing to run: tick 'Analysis' and/or 'Integration' on at least one input.",
+        type = "warning", duration = 8
+      )
+      return()
+    }
+    # Every input (analysis or integration) needs a file
+    has_path <- vapply(id, function(x) !identical(x$path, EMPTY_VALUE), logical(1))
+    missing_path <- which(is_active & !has_path)
+    if (length(missing_path) > 0) {
+      showNotification(
+        paste0("No file selected for input ", paste(missing_path, collapse = ", "),
+               ". Upload a data file for every input that has Analysis or Integration ticked."),
+        type = "warning", duration = 8
+      )
+      return()
+    }
+
     # BASE_DIR = directory where app.R and BiomiX_BETA.r live
     # JSON must be written here so BiomiX_BETA.r can find it with setwd()
     base_dir <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
