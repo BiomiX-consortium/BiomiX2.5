@@ -683,6 +683,19 @@ server <- function(input, output, session) {
       return()
     }
 
+    # Integration needs at least two datasets flagged as integration inputs
+    ig <- integration_data()
+    id <- inputs_data()
+    n_selected <- sum(vapply(id, function(x) identical(x$integration, "YES"), logical(1)))
+    if (ig$data_integration == "YES" && n_selected < 2) {
+      showNotification(
+        "Integration is ON but fewer than two datasets are marked for integration.
+         Tick the 'Integration' box on at least two inputs, or switch integration off.",
+        type = "warning", duration = 8
+      )
+      return()
+    }
+
     # BASE_DIR = directory where app.R and BiomiX_BETA.r live
     # JSON must be written here so BiomiX_BETA.r can find it with setwd()
     base_dir <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
