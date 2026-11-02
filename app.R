@@ -718,6 +718,17 @@ server <- function(input, output, session) {
       return()
     }
 
+    # Every input needs a label
+    has_label <- vapply(id, function(x) nzchar(trimws(x$label)), logical(1))
+    missing_label <- which(is_active & !has_label)
+    if (length(missing_label) > 0) {
+      showNotification(
+        paste0("No label set for input ", paste(missing_label, collapse = ", "), "."),
+        type = "warning", duration = 8
+      )
+      return()
+    }
+
     # BASE_DIR = directory where app.R and BiomiX_BETA.r live
     # JSON must be written here so BiomiX_BETA.r can find it with setwd()
     base_dir <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
