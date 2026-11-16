@@ -59,7 +59,7 @@ integrationUI <- function(id) {
             radioButtons(
               ns("method"),
               label    = NULL,
-              choices  = c("MOFA", "Diablo", "SNF", "NEMO", "MintTea"),
+              choices  = c("MOFA", "Diablo", "SNF", "NEMO", "MintTea", "PRAMIGO"),
               selected = "MOFA",
               inline   = FALSE
             )
@@ -102,7 +102,7 @@ integrationUI <- function(id) {
         conditionalPanel(
           condition = paste0(
             "input['", ns("data_integration"), "'] == 'YES' && ",
-            "(['SNF','NEMO','MintTea'].indexOf(input['", ns("method"), "']) !== -1)"
+            "(['SNF','NEMO','MintTea', 'PRAMIGO'].indexOf(input['", ns("method"), "']) !== -1)"
           ),
           div(
             class = "integration-block",

@@ -45,6 +45,7 @@ source("modules/mod_adv_snf_nemo.R")
 source("modules/mod_adv_minttea.R")
 source("modules/mod_adv_metadata_filter.R")
 source("modules/mod_qc_imputation.R")
+source("modules/mod_adv_pramigo.R")
 
 
 # =============================================================================
@@ -423,7 +424,8 @@ ui <- fluidPage(
           tabPanel("MOFA & Diablo",      br(), advMofaUI("adv_mofa")),
           tabPanel("SNF / NEMO",         br(), advSnfNemoUI("adv_snf_nemo")),
           tabPanel("MintTea",            br(), advMintteaUI("adv_minttea")),
-          tabPanel("Metadata Filtering", br(), advMetadataFilterUI("adv_meta_filter"))
+          tabPanel("Metadata Filtering", br(), advMetadataFilterUI("adv_meta_filter")),
+          tabPanel("Pramigo",            br(), advPramigoUI("adv_pramigo"))
         )
       ),
       
@@ -473,6 +475,7 @@ server <- function(input, output, session) {
   adv_minttea_data     <- advMintteaServer("adv_minttea")
   adv_meta_filter_data <- advMetadataFilterServer("adv_meta_filter",
                                                   metadata_df = reactive(startup_data()$metadata_df))
+  adv_pramigo_data     <- advPramigoServer("adv_pramigo")
   
   # QC & Imputation module — fully independent, no inputs needed from other modules
   qcImputationServer("qc_imputation")
@@ -498,6 +501,8 @@ server <- function(input, output, session) {
     sn  <- adv_snf_data()
     mt  <- adv_minttea_data()
     fil <- adv_meta_filter_data()
+    pr  <- adv_pramigo_data()
+    
     
     adv <- list(
       # Row 1: user-configured values
@@ -536,7 +541,14 @@ server <- function(input, output, session) {
         ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = mf$diablo_design_file,
         ADVANCED_OPTION_DIABLO_OPTIONS                      = mf$diablo_feature_sel,
         ADVANCED_OPTION_MINTTEA_OPTIONS                     = as.character(mt$n_repeats),
-        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character(mt$keep_x)
+        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character(mt$keep_x),
+        # Pramigo — row 1: epoch, n_batch, lr, resume | leiden_res | checkpoint
+        ADVANCED_OPTION_PRAMIGO_1                           = pr$epoch,
+        ADVANCED_OPTION_PRAMIGO_2                           = pr$n_batch,
+        ADVANCED_OPTION_PRAMIGO_3                           = pr$lr,
+        ADVANCED_OPTION_PRAMIGO_4                           = pr$resume,
+        ADVANCED_OPTION_PRAMIGO_5                           = pr$leiden_res,
+        ADVANCED_OPTION_PRAMIGO_6                           = pr$checkpoint
       ),
       # Row 2: minimum/alternative thresholds (fixed constants from global.R)
       #COMMANDS_ADVANCED_ROW2,
@@ -575,7 +587,14 @@ server <- function(input, output, session) {
         ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = as.character("X"),
         ADVANCED_OPTION_DIABLO_OPTIONS                      = mf$diablo_n_iter,
         ADVANCED_OPTION_MINTTEA_OPTIONS                     = as.character(mt$n_folds),
-        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character(mt$design_val)
+        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character(mt$design_val),
+        # Pramigo — row 2: n_hid, ae_n_hid, n_heads, n_layers | leiden_min | resume(echo)
+        ADVANCED_OPTION_PRAMIGO_1                           = pr$n_hid,
+        ADVANCED_OPTION_PRAMIGO_2                           = pr$ae_n_hid,
+        ADVANCED_OPTION_PRAMIGO_3                           = pr$n_heads,
+        ADVANCED_OPTION_PRAMIGO_4                           = pr$n_layers,
+        ADVANCED_OPTION_PRAMIGO_5                           = pr$leiden_min,
+        ADVANCED_OPTION_PRAMIGO_6                           = pr$resume
       ),
       # Row 3: maximum values / extra options (fixed constants from global.R)
       #COMMANDS_ADVANCED_ROW3
@@ -614,7 +633,17 @@ server <- function(input, output, session) {
         ADVANCED_OPTION_FILE_PATH_DIABLO_DESIGN             = as.character("X"),
         ADVANCED_OPTION_DIABLO_OPTIONS                      = as.character("X"),
         ADVANCED_OPTION_MINTTEA_OPTIONS                     = as.character(mt$edge_threshold),
-        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character("X")
+        ADVANCED_OPTION_MINTTEA_FEATURES                    = as.character("X"),
+        # Pramigo — row 3: topology, omic1_cutoff, omic2_cutoff, sample_mode
+        # Extra params (leiden_res, leiden_min, cuda, checkpoint, manifest) are
+        # packed into PRAMIGO_5 across rows: row1=leiden_res, row2=leiden_min,
+        # row3=cuda; PRAMIGO_6: row1=checkpoint, row2=resume(echo), row3=manifest
+        ADVANCED_OPTION_PRAMIGO_1                           = pr$topology,
+        ADVANCED_OPTION_PRAMIGO_2                           = pr$omic1_cutoff,
+        ADVANCED_OPTION_PRAMIGO_3                           = pr$omic2_cutoff,
+        ADVANCED_OPTION_PRAMIGO_4                           = pr$sample_mode,
+        ADVANCED_OPTION_PRAMIGO_5                           = pr$cuda,
+        ADVANCED_OPTION_PRAMIGO_6                           = as.character("X")
       )
     )
     

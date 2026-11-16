@@ -57,7 +57,7 @@ OMICS_TYPES <- c(
 )
 
 # Integration methods available
-INTEGRATION_METHODS <- c("MOFA", "Diablo", "SNF", "NEMO", "MintTea")
+INTEGRATION_METHODS <- c("MOFA", "Diablo", "SNF", "NEMO", "MintTea", "PRAMIGO")
 
 # Index labels for the 6 inputs (used in the final JSON)
 INPUT_INDICES <- paste0("input", 1:6)

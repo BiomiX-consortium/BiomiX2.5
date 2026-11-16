@@ -27,7 +27,7 @@ print("Information acquired, running the analysis")
 
 
 #Master function to run the docker systems
-generateRunnerFunction <- function(dockerImage, expose_qc_port = FALSE) {
+generateRunnerFunction <- function(dockerImage, expose_qc_port = FALSE, gpu = FALSE) {  # <-- NUOVO: aggiunto gpu = FALSE
   
   if (!is_in_docker) {
     # --- Caso locale: nessun Docker, comportamento identico a prima ---
@@ -58,17 +58,19 @@ generateRunnerFunction <- function(dockerImage, expose_qc_port = FALSE) {
     minimized = FALSE, invisible = TRUE, timeout = 0
   ) {
     
-    # Template: docker run --rm -v <host_path>:/shared [--p 3839:3839] --entrypoint Rscript
+    # Template: docker run --rm -v <host_path>:/shared [--p 3839:3839] [--gpus all] --entrypoint Rscript
     #           <dockerImage> COMMAND ARGS
     
     port_args <- if (expose_qc_port) c("-p", "3839:3839") else character()
+    gpu_args  <- if (gpu) c("--gpus", "all") else character()  # <-- NUOVO
     
     system2(
       command = "docker",
       args = c(
         "run", "--rm",
         "-v", paste0(host_shared_path, ":/shared"),
-        port_args,                        # NEW — esposta solo se richiesto (QC preview)
+        port_args,                        # esposta solo se richiesto (QC preview)
+        gpu_args,                         # <-- NUOVO — esposta solo se richiesto (accesso GPU)
         "--entrypoint", command,          # es. "Rscript" — sovrascrive l'ENTRYPOINT dell'immagine
         dockerImage,
         shQuote(args)
@@ -85,7 +87,156 @@ generateRunnerFunction <- function(dockerImage, expose_qc_port = FALSE) {
 
 
 
+# --- Rileva se una GPU NVIDIA è realmente passabile al container -----------
+gpu_available <- function() {
+  res <- tryCatch(
+    system2("docker", c("run", "--rm", "--gpus", "all",
+                        "nvidia/cuda:12.4.1-base-ubuntu22.04", "nvidia-smi"),
+            stdout = FALSE, stderr = FALSE),
+    error = function(e) 1L
+  )
+  identical(res, 0L)
+}
 
+
+# --- Prepara una matrice in formato "PRAMIGO-ready" a partire dal formato
+# usato da MOFA/DIABLO, per le omiche che sono trasposte + hanno la colonna
+# condizione da eliminare (Metabolomics, Undefined) --------------------------
+
+# --- Prepare a "PRAMIGO-ready" matrix from the MOFA/DIABLO format, for
+# omics that are transposed and carry a condition column to drop
+# (Metabolomics, Undefined) -------------------------------------------------
+
+prepare_pramigo_matrix <- function(original_path, condition_col_index = 2) {
+  
+  cat("\n[PRAMIGO prep] Reading original matrix: ", original_path, "\n", sep = "")
+  
+  df <- read.delim(original_path, check.names = FALSE, stringsAsFactors = FALSE)
+  
+  cat("[PRAMIGO prep] Original shape: ", nrow(df), " rows x ", ncol(df),
+      " columns (samples x [ID + condition + features])\n", sep = "")
+  cat("[PRAMIGO prep] First 3 column names: ",
+      paste(head(colnames(df), 3), collapse = ", "), "\n", sep = "")
+  cat("[PRAMIGO prep] Dropping column ", condition_col_index,
+      " (condition) - name was: '", colnames(df)[condition_col_index], "'\n", sep = "")
+  
+  sample_ids <- df[[1]]
+  feature_matrix <- df[, -c(1, condition_col_index), drop = FALSE]
+  
+  # Transpose: rows = features/peaks, columns = samples
+  transposed <- as.data.frame(t(feature_matrix), check.names = FALSE)
+  colnames(transposed) <- sample_ids
+  transposed <- cbind(ID = rownames(transposed), transposed)
+  rownames(transposed) <- NULL
+  
+  cat("[PRAMIGO prep] Transposed shape: ", nrow(transposed), " rows x ", ncol(transposed),
+      " columns (features x [ID + samples])\n", sep = "")
+  cat("[PRAMIGO prep] First 3 row IDs (features): ",
+      paste(head(transposed$ID, 3), collapse = ", "), "\n", sep = "")
+  cat("[PRAMIGO prep] First 3 sample column names: ",
+      paste(head(colnames(transposed)[-1], 3), collapse = ", "), "\n", sep = "")
+  
+  # New path: replaces the last part of the filename (e.g. "_MOFA") with "_PRAMIGO"
+  # Metabolomics_TEST1_MOFA.tsv -> Metabolomics_TEST1_PRAMIGO.tsv
+  new_path <- sub("_[^_]+\\.tsv$", "_PRAMIGO.tsv", original_path)
+  
+  write.table(transposed, new_path, sep = "\t", quote = FALSE, row.names = FALSE)
+  
+  cat("[PRAMIGO prep] Written to: ", new_path, "\n\n", sep = "")
+  
+  new_path
+}
+
+
+# --- Resolve the correct Integration/INPUT file for PRAMIGO, mirroring the
+# same path convention MOFA already uses, then apply the format fix
+# (transpose + drop condition column) only where needed -------------------
+
+get_pramigo_input_path <- function(i) {
+  
+  data_type <- COMMAND$DATA_TYPE[i]
+  label     <- COMMAND$LABEL[i]
+  
+  if (data_type == "Transcriptomics") {
+    
+    integration_dir  <- paste(shared_dir, "/Integration/INPUT/", label, "_",
+                              args[1], "_vs_", args[2], sep = "")
+    integration_path <- paste(integration_dir, "/", label, "_",
+                              args[1], "_vs_", args[2],
+                              "_normalized_vst_variance.tsv", sep = "")
+    
+  } else if (data_type == "Methylomics") {
+    
+    integration_dir  <- paste(shared_dir, "/Integration/INPUT/Methylome_", label, "_",
+                              args[1], "_vs_", args[2], sep = "")
+    integration_path <- paste(integration_dir, "/", label, "_matrix_MOFA.tsv", sep = "")
+    
+  } else if (data_type == "Metabolomics") {
+    
+    integration_dir  <- paste(shared_dir, "/Integration/INPUT/Metabolomics_", label, "_",
+                              args[1], "_vs_", args[2], sep = "")
+    integration_path <- paste(integration_dir, "/Metabolomics_", label, "_MOFA.tsv", sep = "")
+    
+  } else if (data_type == "Undefined") {
+    
+    integration_dir  <- paste(shared_dir, "/Integration/INPUT/Undefined_", label, "_",
+                              args[1], "_vs_", args[2], sep = "")
+    integration_path <- paste(integration_dir, "/Undefined_", label, "_MOFA.tsv", sep = "")
+    
+  } else {
+    stop("PRAMIGO: unknown DATA_TYPE '", data_type, "' - no Integration/INPUT convention defined.")
+  }
+  
+  cat("[PRAMIGO prep] Resolved Integration/INPUT path for row ", i, " (", data_type, "): ",
+      integration_path, "\n", sep = "")
+  
+  if (!file.exists(integration_path)) {
+    stop("PRAMIGO: expected preprocessed file not found: ", integration_path)
+  }
+  
+  # <-- QUESTO è l'UNICO pezzo cambiato rispetto a prima:
+  if (data_type %in% c("Metabolomics", "Undefined")) {
+    prepare_pramigo_matrix(integration_path)
+  } else if (data_type %in% c("Transcriptomics", "Methylomics")) {
+    prepare_pramigo_variance_filtered_matrix(integration_path)
+  } else {
+    integration_path
+  }
+}
+
+
+
+
+prepare_pramigo_variance_filtered_matrix <- function(original_path, top_n = 5000) {
+  
+  cat("\n[PRAMIGO prep] Reading variance-annotated matrix: ", original_path, "\n", sep = "")
+  
+  df <- read.delim(original_path, check.names = FALSE, stringsAsFactors = FALSE)
+  
+  cat("[PRAMIGO prep] Original shape: ", nrow(df), " rows x ", ncol(df),
+      " columns ([ID + samples + variance])\n", sep = "")
+  
+  variance_col <- ncol(df)
+  cat("[PRAMIGO prep] Last column ('", colnames(df)[variance_col],
+      "') treated as the variance score\n", sep = "")
+  
+  df_sorted <- df[order(-df[[variance_col]]), , drop = FALSE]
+  df_top    <- head(df_sorted, top_n)
+  df_top    <- df_top[, -variance_col, drop = FALSE]
+  
+  cat("[PRAMIGO prep] Filtered to top ", top_n, " most variable rows -> shape: ",
+      nrow(df_top), " rows x ", ncol(df_top), " columns ([ID + samples])\n", sep = "")
+  cat("[PRAMIGO prep] First 3 IDs kept: ",
+      paste(head(df_top[[1]], 3), collapse = ", "), "\n", sep = "")
+  
+  new_path <- sub("_[^_]+\\.tsv$", "_PRAMIGO.tsv", original_path)
+  
+  write.table(df_top, new_path, sep = "\t", quote = FALSE, row.names = FALSE)
+  
+  cat("[PRAMIGO prep] Written to: ", new_path, "\n\n", sep = "")
+  
+  new_path
+}
 
 
 
@@ -538,6 +689,160 @@ if(COMMAND_MOFA[2,2] == "YES") {
     cat("\n\n\n\n\n NEMO analysis complete ^-^")
     
   }
+  
+  
+  if(COMMAND_MOFA[1,2] == "PRAMIGO_INTEGRATION") {
+    
+    
+    cat("[PRAMIGO debug] is_in_docker =", is_in_docker, "\n")
+    cat("[PRAMIGO debug] shared_dir   =", shared_dir, "\n")
+    cat("[PRAMIGO debug] directory    =", directory, "\n")
+    
+    
+    cat("\n\n\n\n\nStarting the PRAMIGO analysis \n\n\n\n\n")
+    Sys.sleep(5)
+    
+    if (!is_in_docker) {
+      # --- Caso locale: da definire quando servirà ---
+    } else {
+      
+      idx_integration <- which(COMMAND$INTEGRATION == "YES")
+      
+      if (length(idx_integration) < 2) {
+        cat("\n\n\n\n\n PRAMIGO requires at least two dataset selected for the integration — skipped.\n\n\n\n\n")
+      } else {
+        
+        result_dir <- paste0(
+          shared_dir, "/Integration/OUTPUT/PRAMIGO_",
+          paste(COMMAND$DATA_TYPE[idx_integration], collapse = "_vs_")
+        )
+        dir.create(result_dir, recursive = TRUE, showWarnings = FALSE)
+        
+        # --- Estrazione parametri avanzati PRAMIGO dal JSON ----------------------
+        # Mappatura confermata (3 righe x 6 colonne ADVANCED_OPTION_PRAMIGO_1.._6):
+        #   riga1: epoch | n_batch | lr | resume | leiden_resolution | checkpoint_every
+        #   riga2: n_hid | ae_n_hid | n_heads | n_layers | leiden_min_cluster_size | (eco resume)
+        #   riga3: topology | omic1_corr_cutoff | omic2_corr_cutoff | sample_mode | cuda | (vuoto)
+        adv <- COMMAND_ADVANCED
+        
+        PRAMIGO_EPOCH      <- as.character(adv$ADVANCED_OPTION_PRAMIGO_1[1])
+        PRAMIGO_N_BATCH    <- as.character(adv$ADVANCED_OPTION_PRAMIGO_2[1])
+        PRAMIGO_LR         <- as.character(adv$ADVANCED_OPTION_PRAMIGO_3[1])
+        PRAMIGO_RESUME     <- as.character(adv$ADVANCED_OPTION_PRAMIGO_4[1])
+        PRAMIGO_LEIDEN_RES <- as.character(adv$ADVANCED_OPTION_PRAMIGO_5[1])
+        PRAMIGO_CHECKPOINT <- as.character(adv$ADVANCED_OPTION_PRAMIGO_6[1])
+        
+        PRAMIGO_N_HID      <- as.character(adv$ADVANCED_OPTION_PRAMIGO_1[2])
+        PRAMIGO_AE_N_HID   <- as.character(adv$ADVANCED_OPTION_PRAMIGO_2[2])
+        PRAMIGO_N_HEADS    <- as.character(adv$ADVANCED_OPTION_PRAMIGO_3[2])
+        PRAMIGO_N_LAYERS   <- as.character(adv$ADVANCED_OPTION_PRAMIGO_4[2])
+        PRAMIGO_LEIDEN_MIN <- as.character(adv$ADVANCED_OPTION_PRAMIGO_5[2])
+        
+        PRAMIGO_TOPOLOGY     <- as.character(adv$ADVANCED_OPTION_PRAMIGO_1[3])
+        PRAMIGO_OMIC1_CUTOFF <- as.character(adv$ADVANCED_OPTION_PRAMIGO_2[3])
+        PRAMIGO_OMIC2_CUTOFF <- as.character(adv$ADVANCED_OPTION_PRAMIGO_3[3])
+        PRAMIGO_SAMPLE_MODE  <- as.character(adv$ADVANCED_OPTION_PRAMIGO_4[3])
+        PRAMIGO_CUDA_PREF    <- as.character(adv$ADVANCED_OPTION_PRAMIGO_5[3])  # scelta esplicita utente
+        
+        # --cuda: 0 = usa GPU0, qualunque altro valore = CPU (confermato da
+        # src/biomix_hgt.py: parser.add_argument('--cuda', type=int, default=1)).
+        # Nessuna auto-detection lato R: si usa direttamente la scelta
+        # dell'utente in UI. Il fallback a CPU se la GPU risulta assente resta
+        # comunque gestito dentro biomix_hgt.py stesso (vedi il warning
+        # "Falling back to CPU" osservato nei log).
+        requested_cuda <- suppressWarnings(as.integer(PRAMIGO_CUDA_PREF))
+        if (is.na(requested_cuda)) requested_cuda <- 1L  # default sicuro: CPU
+        use_gpu <- (requested_cuda == 0L)
+        
+        cat(if (use_gpu) "\n\n GPU requested by the user - PRAMIGO will use CUDA.\n\n"
+            else "\n\n CPU requested by the user - PRAMIGO will use the CPU.\n\n")
+        
+        runner_PRAMIGO <- generateRunnerFunction("biomix-pramigo:test", gpu = use_gpu) #ghcr.io/biomix-consortium/biomix-pramigo:latest
+        
+        cuda_arg <- c("--cuda", as.character(requested_cuda))
+        
+        # --- Parametri comuni a entrambi i casi (2 omiche / manifest) -----------
+        common_args <- c(
+          "--epoch", PRAMIGO_EPOCH,
+          "--n_batch", PRAMIGO_N_BATCH,
+          "--lr", PRAMIGO_LR,
+          "--leiden_resolution", PRAMIGO_LEIDEN_RES,
+          "--checkpoint_every", PRAMIGO_CHECKPOINT,
+          "--n_hid", PRAMIGO_N_HID,
+          "--ae_n_hid", PRAMIGO_AE_N_HID,
+          "--n_heads", PRAMIGO_N_HEADS,
+          "--n_layers", PRAMIGO_N_LAYERS,
+          "--leiden_min_cluster_size", PRAMIGO_LEIDEN_MIN,
+          "--topology", PRAMIGO_TOPOLOGY,
+          "--sample_mode", PRAMIGO_SAMPLE_MODE
+        )
+        
+        if (!is.na(PRAMIGO_RESUME) && !(PRAMIGO_RESUME %in% c("off", ""))) {
+          common_args <- c(common_args, "--resume", PRAMIGO_RESUME)
+        }
+        
+        if (length(idx_integration) == 2) {
+          
+          # --- Caso semplice: due omiche, CLI diretta ---
+          pramigo_args <- c(
+            "-u",
+            "src/biomix_hgt.py",
+            "--metadata_path", DIR_METADATA,
+            "--omic1_path", get_pramigo_input_path(idx_integration[1]),
+            "--omic2_path", get_pramigo_input_path(idx_integration[2]),
+            "--result_dir", result_dir,
+            "--omic1_corr_cutoff", PRAMIGO_OMIC1_CUTOFF,
+            "--omic2_corr_cutoff", PRAMIGO_OMIC2_CUTOFF,
+            common_args,
+            cuda_arg
+          )
+          
+        } else {
+          
+          # --- Caso generale: 3+ omiche, manifest.yaml scritto in shared_dir ---
+          manifest_path <- paste0(result_dir, "/manifest.yaml")
+          
+          uniform_corr_cutoff <- as.numeric(PRAMIGO_OMIC1_CUTOFF)
+          
+          omics_list <- lapply(idx_integration, function(i) {
+            list(
+              name        = tolower(COMMAND$DATA_TYPE[i]),
+              path        = get_pramigo_input_path(i),
+              corr_cutoff = uniform_corr_cutoff
+            )
+          })
+          
+          manifest <- list(
+            topology    = PRAMIGO_TOPOLOGY,
+            sample_mode = PRAMIGO_SAMPLE_MODE,
+            omics       = omics_list
+          )
+          
+          yaml::write_yaml(manifest, manifest_path)
+          
+          pramigo_args <- c(
+            "-u",
+            "src/biomix_hgt.py",
+            "--metadata_path", DIR_METADATA,
+            "--omics_manifest", manifest_path,
+            "--result_dir", result_dir,
+            common_args,
+            cuda_arg
+          )
+        }
+        
+        runner_PRAMIGO(
+          command = "python",
+          args    = pramigo_args
+        )
+      }
+    }
+    
+    cat("\n\n\n\n\n PRAMIGO analysis complete ^-^")
+  }
+  
+  
+  
   
 }
 
