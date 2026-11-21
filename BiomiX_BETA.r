@@ -757,7 +757,7 @@ if(COMMAND_MOFA[2,2] == "YES") {
         cat(if (use_gpu) "\n\n GPU requested by the user - PRAMIGO will use CUDA.\n\n"
             else "\n\n CPU requested by the user - PRAMIGO will use the CPU.\n\n")
         
-        runner_PRAMIGO <- generateRunnerFunction("biomix-pramigo:test", gpu = use_gpu) #ghcr.io/biomix-consortium/biomix-pramigo:latest
+        runner_PRAMIGO <- generateRunnerFunction("ghcr.io/biomix-consortium/biomix-pramigo:latest", gpu = use_gpu) # local test image was "biomix-pramigo:test"
         
         cuda_arg <- c("--cuda", as.character(requested_cuda))
         
